@@ -1,0 +1,146 @@
+# Loading libraries
+
+```{r}
+library("tidyverse")
+```
+
+
+
+# Loading the csv
+
+```{r}
+data <- read.csv("data/atp_tennis.csv")
+glimpse(data)
+```
+# Data cleaning ?
+
+```{r}
+data %>% summarise(across(everything(), ~sum(is.na(.))))
+```
+
+No missing values
+
+# Data viz starter
+
+```{r}
+data %>%
+  count(Winner, sort = TRUE) %>%
+  top_n(10) %>%
+  ggplot(aes(x = reorder(Winner, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 des joueurs avec le plus de victoires", x = "Joueur", y = "Nombre de victoires")
+
+```
+
+
+```{r}
+data %>%
+  filter(Player_1 == "Federer R." | Player_2 == "Federer R.") %>%
+  mutate(Date = as.Date(Date)) %>%
+  ggplot(aes(x = Date)) +
+  geom_line(aes(y = Rank_1, color = "Classement de Federer")) +
+  labs(title = "Évolution du classement de Federer", y = "Classement", x = "Date") +
+  scale_y_reverse()  # Classement inversé, car 1 est mieux que 100
+
+```
+
+
+
+```{r}
+data %>%
+  count(Surface) %>%
+  ggplot(aes(x = "", y = n, fill = Surface)) +
+  geom_col() +
+  coord_polar(theta = "y") +
+  labs(title = "Répartition des matchs par surface") +
+  theme_void()
+
+```
+
+
+```{r}
+data %>%
+  count(Winner, Surface) %>%
+  group_by(Surface) %>%
+  top_n(5, n) %>%
+  ggplot(aes(x = reorder(Winner, n), y = n, fill = Surface)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~ Surface) +
+  labs(title = "Top 5 des joueurs par surface", x = "Joueur", y = "Nombre de victoires")
+
+```
+
+
+```{r}
+data %>%
+  mutate(num_sets = str_count(Score, "\\d-\\d")) %>%
+  ggplot(aes(x = num_sets)) +
+  geom_bar(fill = "darkred") +
+  labs(title = "Distribution du nombre de sets par match", x = "Nombre de sets", y = "Nombre de matchs")
+
+```
+
+
+```{r}
+data %>%
+  count(Round, Winner) %>%
+  group_by(Round) %>%
+  top_n(3, n) %>%
+  ggplot(aes(x = reorder(Winner, n), y = n, fill = Round)) +
+  geom_col() +
+  coord_flip() +
+  facet_wrap(~ Round) +
+  labs(title = "Joueurs dominants par round", x = "Joueur", y = "Victoires")
+
+```
+
+
+
+
+```{r}
+data %>%
+  mutate(Year = lubridate::year(as.Date(Date))) %>%
+  count(Year) %>%
+  ggplot(aes(x = Year, y = n)) +
+  geom_line(color = "darkgreen") +
+  labs(title = "Nombre de matchs par année", x = "Année", y = "Nombre de matchs")
+
+```
+
+
+```{r}
+data %>%
+  mutate(Month = lubridate::month(as.Date(Date), label = TRUE)) %>%
+  count(Month) %>%
+  ggplot(aes(x = Month, y = n)) +
+  geom_col(fill = "orange") +
+  labs(title = "Distribution des matchs par mois", x = "Mois", y = "Nombre de matchs")
+
+```
+
+
+```{r}
+library(GGally)
+data %>%
+  select(Rank_1, Rank_2, Odd_1, Odd_2) %>%
+  GGally::ggpairs()
+
+```
+
+
+
+
+```{r}
+dataç %>%
+  filter((Rank_1 > Rank_2 & Winner == Player_1) | (Rank_2 > Rank_1 & Winner == Player_2)) %>%
+  mutate(Upset = abs(Rank_1 - Rank_2)) %>%
+  top_n(10, Upset) %>%
+  ggplot(aes(x = reorder(Winner, Upset), y = Upset)) +
+  geom_col(fill = "firebrick") +
+  coord_flip() +
+  labs(title = "Top 10 des plus gros upsets", x = "Gagnant", y = "Écart de classement")
+
+```
+
