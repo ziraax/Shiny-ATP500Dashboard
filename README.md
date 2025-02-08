@@ -29,11 +29,10 @@ shiny::app()
 ## Documentation 
 
 Le projet utilise la librairie `bs4Dash`, lien vers la doc :
-[R Documentation](https://www.rdocumentation.org/packages/bs4Dash/versions/2.3.4)
 
-[Github bs4Dash](https://github.com/RinteRface/bs4Dash)
-
-[Une ptite video sympa qui présente bs4Dash](https://www.youtube.com/watch?v=LY6K_GD4ypc)
+- [R Documentation](https://www.rdocumentation.org/packages/bs4Dash/versions/2.3.4)
+- [Github bs4Dash](https://github.com/RinteRface/bs4Dash)
+- [Une ptite video sympa qui présente bs4Dash](https://www.youtube.com/watch?v=LY6K_GD4ypc)
 
 
 
