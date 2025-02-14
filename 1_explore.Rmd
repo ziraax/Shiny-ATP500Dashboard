@@ -1,7 +1,7 @@
 # Loading libraries
 
 ```{r}
-library("tidyverse")
+library("tidyverse") 
 ```
 
 
@@ -12,6 +12,11 @@ library("tidyverse")
 data <- read.csv("data/atp_tennis.csv")
 glimpse(data)
 ```
+```{r}
+unique(data$Tournament)
+```
+
+
 # Data cleaning ?
 
 ```{r}

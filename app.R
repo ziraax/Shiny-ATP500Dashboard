@@ -66,7 +66,7 @@ ui <- bs4DashPage(
 server <- function(input, output, session) {
   # Appels des modules (avec moduleServer)
   home_server("home_ui", dataset)
-  dashboard_server("dashboard_ui")
+  dashboard_server("dashboard_ui", dataset)
   clustering_server("clustering_ui")
   battle_server("battle_ui")
 }
