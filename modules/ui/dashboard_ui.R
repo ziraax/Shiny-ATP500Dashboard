@@ -26,7 +26,7 @@ dashboard_ui <- function(id) {
         bs4Card(
           
           title = "Statistiques générales",  # 🏆 Grande carte principale
-          status = "primary",
+          status = "info",
           solidHeader = TRUE,
           collapsible = TRUE,
           width = 12,
@@ -56,18 +56,14 @@ dashboard_ui <- function(id) {
           
           # Graphiques interactifs
           fluidRow(
-            column(6, plotlyOutput(ns(""))),
+            column(6, plotlyOutput(ns("nb_matchs_annees"))),
+            column(6, plotlyOutput(ns("top_winners_by_year"))),
           ),
           
-          
-          # Value Boxes
           fluidRow(
-            bs4ValueBoxOutput(ns("")),
-            bs4ValueBoxOutput(ns("")),
-            bs4ValueBoxOutput(ns(""))
+            column(6, plotlyOutput(ns("tournaments_per_year"))),
+            column(6, plotlyOutput(ns("upsets_per_year"))),
           )
-          
-          
         ),
         
         

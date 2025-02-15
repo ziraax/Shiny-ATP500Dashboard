@@ -101,6 +101,78 @@ dashboard_server <- function(id, dataset) {
     # PARTIE TENDANCES ET PERFORMANCES#
     ###################################
     
+    output$nb_matchs_annees <- renderPlotly({
+      dataset %>%
+        mutate(Year = as.numeric(substr(Date, 1, 4))) %>%  # Extraction de l'année
+        filter(Year < 2025) %>% 
+        group_by(Year) %>%
+        summarise(Num_Matches = n()) %>%
+        plot_ly(x = ~Year, y = ~Num_Matches, type = "scatter", mode = "lines+markers",
+                line = list(color = "blue")) %>%
+        layout(
+          title = "Évolution du nombre de matchs par année",
+          xaxis = list(title = "Année"),
+          yaxis = list(title = "Nombre de matchs")
+        )
+    })
+    
+    output$top_winners_by_year <- renderPlotly({
+      top_winners_by_year <- dataset %>%
+        mutate(Year = as.numeric(substr(Date, 1, 4))) %>%
+        filter(Year < 2025) %>% 
+        group_by(Year, Winner) %>%
+        summarise(Wins = n(), .groups = "drop") %>%
+        arrange(Year, desc(Wins)) %>%
+        group_by(Year) %>%
+        slice_max(Wins, n = 1)# Sélectionne le joueur avec le plus de victoires par année
+      
+      plot_ly(top_winners_by_year, x = ~Year, y = ~Wins, type = "scatter", mode = "lines+markers",
+              text = ~Winner, hoverinfo = "text+y",
+              marker = list(color = "blue")) %>%
+        layout(
+          title = "Joueur avec le plus de victoires par année",
+          xaxis = list(title = "Année"),
+          yaxis = list(title = "Nombre de victoires")
+        )
+    })
+    
+    
+    output$tournaments_per_year <- renderPlotly({
+      dataset %>% 
+        mutate(Year = as.numeric(substr(Date, 1, 4))) %>%
+        filter(Year < 2025) %>% 
+        group_by(Year) %>% 
+        summarise(Num_Tournaments = n_distinct(Tournament), .groups = "drop") %>% 
+        plot_ly(x = ~Year, y = ~Num_Tournaments, type="scatter", mode = "lines+markers",
+                marker = list(color = "blue")) %>% 
+        layout(
+          title = "Evolution du nombre de tournois par année",
+          xaxis = list(title = "Année"),
+          yaxis = list(title = "Nombre de tournois")
+        )
+        
+    })
+
+    output$upsets_per_year <- renderPlotly({
+      dataset %>% 
+        mutate(Year = as.numeric(substr(Date, 1, 4))) %>%
+        filter(Rank_1 > Rank_2) %>% 
+        filter(Winner == Player_2) %>% 
+        group_by(Year) %>% 
+        summarise(Num_Upsets = n(), .groups = "drop") %>% 
+        plot_ly(x = ~Year, y = ~Num_Upsets, type="scatter", mode = "lines+markers",
+                marker = list(color= "blue")) %>% 
+        layout(
+          title = "Evolution du nombre d'upsets par année",
+          xaxis = list(title = "Année"),
+          yaxis = list(title = "Nombre d'upsets")
+        )
+    })
+    
+    ########################################
+    # FIN PARTIE TENDANCES ET PERFORMANCES #
+    ########################################
+    
     
     
     
