@@ -22,6 +22,56 @@ data %>% summarise(across(everything(), ~sum(is.na(.))))
 
 No missing values
 
+# Handling the coordinates of each tournament
+
+
+```{r}
+geocode <- read.csv2("./data/tournaments_geocode.csv", header = TRUE, sep=",")
+glimpse(geocode)
+
+```
+
+```{r}
+unique(data$Surface)
+```
+
+
+```{r}
+# Fonction de conversion des coordonnées
+convert_coord <- function(coord) {
+  if (is.na(coord)) return(NA)
+  
+  # Extraire les valeurs numériques et les directions
+  num_value <- as.numeric(gsub("[^0-9.-]", "", coord))
+  direction <- gsub("[0-9.-]", "", coord)
+  
+  # Ajuster en fonction de la direction
+  if (direction == "S" | direction == "W") {
+    num_value <- -num_value
+  }
+  
+  return(num_value)
+}
+
+
+geocode$Latitude <- sapply(geocode$Latitude, convert_coord)
+geocode$Longitude <- sapply(geocode$Longitude, convert_coord)
+
+```
+
+
+```{r}
+unique(data$Series)
+```
+
+
+```{r}
+write_csv(geocode, "geocode2.csv")
+
+```
+
+
+
 # Data viz starter
 
 ```{r}

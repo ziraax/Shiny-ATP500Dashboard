@@ -1,4 +1,6 @@
 library(plotly)
+library(leaflet)
+
 
 
 dashboard_server <- function(id, dataset) {
@@ -179,8 +181,123 @@ dashboard_server <- function(id, dataset) {
     
     
     
+    ################################
+    # PARTIE CARTOGRAPHIE ONGLET 4 #
+    ################################
+    
+    tournament_coords <- read.csv2("./data/geocode2.csv", header = TRUE, sep=",")
+    data_with_coords <- merge(data, tournament_coords, by="Tournament", all.x = TRUE)
+
+    
+    data_with_coords$Latitude <- as.numeric(data_with_coords$Latitude)
+    data_with_coords$Longitude <- as.numeric(data_with_coords$Longitude)
     
     
+    filtered_tournaments <- reactive({
+      selected_date <- input$date_slider
+      
+      # Filtrer les données via la date et les checkbox
+      data_filtered <- data_with_coords %>% 
+        filter(Date <= selected_date) %>%
+        group_by(Tournament) %>% 
+        slice_max(Date, n=1) %>% 
+        mutate(
+          color = case_when(
+            Surface == "Hard" ~ "#FF5733",    # Hard - Orange
+            Surface == "Grass" ~ "#28B463",   # Grass - Green
+            Surface == "Clay" ~ "#8E44AD",    # Clay - Purple
+            Surface == "Carpet" ~ "#F39C12",  # Carpet - Yellow
+            TRUE ~ "#BDC3C7"  # Autre surface - Gris
+          ),
+          
+          fillColor = case_when(
+            #Series == "Grand Slam" ~ "#FFC300",  # Si on veut une couleur spécifique pour les tounrois du grand schlem
+            TRUE ~ color  # Autre
+          ),
+          
+          radius = case_when(
+            Series == "Grand Slam" ~ 20,  # Grand Slam - Taille plus grande
+            TRUE ~ 8   # Autres tournois en taille standard
+          )
+        )
+      
+      # gestion des checkbox (filtrage)
+      if (!is.null(input$tournament_types) && length(input$tournament_types) > 0) {
+        data_filtered <- data_filtered %>% filter(Series %in% input$tournament_types)
+      }
+      
+      if (!is.null(input$surface_types) && length(input$surface_types) > 0) {
+        data_filtered <- data_filtered %>% filter(Surface %in% input$surface_types)
+      }
+      
+      return(data_filtered)
+    })
+    
+    
+    
+    output$tournament_map <- renderLeaflet({
+      leaflet() %>%
+        addTiles() %>% 
+        setView(lng = 0, lat = 30, zoom = 2) %>%  
+        addLegend(
+          position = "bottomright", 
+          colors = c("#FF5733", "#28B463", "#8E44AD", "#F39C12"),  # Couleurs de la surface
+          labels = c("🟫 Hard", "🌱 Grass", "🟩 Clay", "💠 Carpet"),
+          title = "Surface des Tournois"
+        )
+    })
+    
+    observe({
+      data_map <- filtered_tournaments()
+      
+      data_map <- data_map %>% 
+        filter(!is.na(Latitude) & !is.na(Longitude))
+      
+      data_map <- data_map %>%
+        filter(
+          Last_Edition == "Ongoing" | as.numeric(Last_Edition) >= as.numeric(format(input$date_slider, "%Y"))
+        )
+      
+      leafletProxy("tournament_map", data = data_map) %>%
+        clearMarkers() %>%
+        addCircleMarkers(
+          lng = ~Longitude,
+          lat = ~Latitude,
+          popup = ~paste0(
+            "<b>", Tournament, "</b><br>",
+            "📅 Date : ", Date, "<br>",
+            "🏆 Dernier vainqueur : ", Winner, "<br>",
+            "🏙️ Ville : ", City, "<br>",
+            "📍 Lieu : ", Venue, "<br>",
+            "🏸 Surface : ", 
+            ifelse(Surface == "Hard", "🟫 - Hard", 
+                   ifelse(Surface == "Grass", "🌱 - Grass",
+                          ifelse(Surface == "Clay", "🟩 - Clay", 
+                                 ifelse(Surface == "Carpet", "💠 - Carpet", "❓ - Unknown")))), "<br>",
+            "🏆 Type de tournoi : ", 
+            ifelse(Series == "Grand Slam", "🏅 - Grand Slam", 
+                   ifelse(Series == "International", "🌍 - International", 
+                          paste0("🎾 - ", Series))), "<br>",
+            "⛳ Côté court : ", 
+            ifelse(Court == "Outdoor", "🌞 - Outdoor", "🏠 - Indoor"), "<br>",
+            "🔢 Meilleur de : ", Best.of, " sets<br>",
+            "🗓️ Première édition : ", First_Edition, "<br>",
+            "🗓️ Dernière édition : ", Last_Edition
+          ),
+          radius = ~radius,
+          color = ~color,  
+          fillColor = ~fillColor,  
+          fillOpacity = 0.7
+        )
+    })
+    
+    
+    
+    
+    
+    ############################
+    # FIN PARTIE CARTOGRAPHIES #
+    ############################
     
     
     

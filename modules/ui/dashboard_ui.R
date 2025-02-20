@@ -84,9 +84,51 @@ dashboard_ui <- function(id) {
       
       tabPanel(
         title = "Analyse tournois",
-        h4("Statistiques des tournois."),
-        textOutput(ns("tournament_stats"))
+        h4("Visualisation cartographique des vainqueurs de tournois."),
+        
+        # Première ligne : Slider sur toute la largeur
+        sliderInput(
+          inputId = ns("date_slider"),
+          label = "Sélectionnez une date :",
+          min = as.Date(min(data$Date, na.rm = TRUE)),
+          max = as.Date(max(data$Date), na.rm = TRUE),
+          value = as.Date("2010-01-01"),
+          timeFormat = "%Y-%m-%d",
+          animate = FALSE,
+          width = "100%"  # On s'assure que le slider occupe toute la largeur
+        ),
+        
+        # Deuxième ligne : Menu checkbox et carte
+        fluidRow(
+          
+          # Colonne filtres 
+          column(3,  # 3/12 
+                 # Sélection des types de tournoi
+                 checkboxGroupInput(ns("tournament_types"), 
+                                    "Sélectionnez les types de tournoi",
+                                    choices = c("Grand Slam", "International", "International Gold", 
+                                                "Masters", "Masters Cup", "ATP250", 
+                                                "ATP500", "Masters 1000"),  
+                                    selected = c("Grand Slam", "International", "International Gold", 
+                                                 "Masters", "Masters Cup", "ATP250", "ATP500", "Masters 1000"),  # Par défaut, tous sélectionnés
+                                    inline = FALSE),
+                 
+                 # Sélection des types de surface
+                 checkboxGroupInput(ns("surface_types"), 
+                                    "Sélectionnez les types de surface",
+                                    choices = c("Hard", "Grass", "Clay", "Carpet"),  # Liste des surfaces
+                                    selected = c("Hard", "Grass", "Clay", "Carpet"),  # Par défaut, toutes sélectionnées
+                                    inline = FALSE)
+          ),
+          
+          # Colonne droite carte 
+          column(9,  # 9/12 largeur
+                 leafletOutput(ns("tournament_map"), height = 600)  # Carte Leaflet
+          )
+        )
       )
+      
+      
     )
   )
 }
