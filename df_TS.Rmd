@@ -1,0 +1,100 @@
+---
+title: "Dataframe TS"
+author: "Elliot Rault-Maisonneuve"
+date: "2025-02-19"
+output: html_document
+---
+
+# Librairies 
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+```
+
+
+# Import des données
+
+```{r}
+df <- read.csv("./data/atp_tennis.csv")
+```
+
+# Création du dataframe timeseries
+
+```{r}
+df_ts <- df %>%
+  # Sélectionner les colonnes nécessaires pour le premier joueur
+  select(date = Date, tournoi = Tournament, nom_j = Player_1, classement = Rank_1, points_ATP = Pts_1) %>%
+  # Ajouter les informations pour le deuxième joueur
+  bind_rows(
+    df %>% select(date = Date, tournoi = Tournament, nom_j = Player_2, classement = Rank_2, points_ATP = Pts_2)
+  ) %>%
+  # Trier par date et nom du joueur
+  arrange(date, nom_j)
+```
+
+# Nombre de tournois joués par joueur dans une année
+
+```{r}
+#Conversion en type Date de date
+
+df_ts$date <- as.Date(df_ts$date, format="%Y-%m-%d")
+
+df_ts %>%
+  filter(date >= as.Date("2023-01-01") & date <= as.Date("2023-12-31")) %>%
+  group_by(nom_j) %>%
+  summarise(Nb_tournois_joues = n_distinct(tournoi)) %>%
+  arrange(desc(Nb_tournois_joues))
+
+```
+
+# Nombre de tournois joués par année pour un joueur
+
+```{r}
+tournois_par_annee <- df_ts %>%
+  filter(nom_j == "Djokovic N.") %>%
+  mutate(annee = year(date)) %>%  # Extraire l'année de la date
+  group_by(annee) %>%
+  summarise(Nb_tournois_joues = n_distinct(tournoi)) %>%
+  arrange(annee)
+
+ggplot(tournois_par_annee, aes(x = annee, y = Nb_tournois_joues)) +
+  geom_line(color = "lightpink") +  
+  labs(title = "Nombre de tournois joués par Novak Djokovic par année",
+       x = "Année",
+       y = "Nombre de tournois joués") +
+  theme_minimal()
+```
+
+
+# Voir l'évolution du classement et le nombre de points d'un joueur (à corriger le dataframe pour que ce soit plus réaliste (doublons des tournois))
+
+```{r}
+
+# Filtrer les données pour Novak Djokovic et enlever les doublons basés sur la date
+classement_Novak <- df_ts %>%
+  filter(nom_j == "Djokovic N.") %>%
+  distinct(date, .keep_all = TRUE)
+
+# Graphique du classement
+ggplot(classement_Novak, aes(x = date, y = classement)) +
+  geom_line(color = "green") +
+  labs(title = "Classement de Novak Djokovic au fil du temps",
+       x = "date",
+       y = "Classement") +
+  theme_minimal()
+
+### Attention, points_ATP à partir de 2005-07-04 ###
+# Graphique du nombre de points
+ggplot(classement_Novak, aes(x = date, y = points_ATP)) +
+  geom_line(color = "blue") +
+  labs(title = "Classement de Novak Djokovic au fil du temps",
+       x = "date",
+       y = "points_ATP") +
+  theme_minimal()
+
+
+```
+
