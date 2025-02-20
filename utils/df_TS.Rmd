@@ -35,6 +35,7 @@ df_ts <- df %>%
   arrange(date, nom_j)
 ```
 
+
 # Nombre de tournois joués par joueur dans une année
 
 ```{r}

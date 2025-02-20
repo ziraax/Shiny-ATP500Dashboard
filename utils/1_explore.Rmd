@@ -9,9 +9,15 @@ library("tidyverse")
 # Loading the csv
 
 ```{r}
-data <- read.csv("data/atp_tennis.csv")
+data <- read.csv("../data/atp_tennis.csv")
 glimpse(data)
 ```
+
+
+```{r}
+length(unique(c(data$Player_1, data$Player_2)))
+```
+
 
 
 # Data cleaning ?
