@@ -1,0 +1,427 @@
+---
+title: "Clustering"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+data <- read.csv("../data/atp_tennis.csv")
+data_players <- read.csv("../data/players_stats.csv")
+```
+
+```{r}
+glimpse(data_players)
+```
+
+```{r}
+glimpse(data)
+```
+
+
+
+```{r}
+# 1. Charger les bibliothèques nécessaires
+library(tidyverse)
+library(tidymodels)
+library(cluster)
+library(ggplot2)
+
+# 3. Sélectionner les colonnes pertinentes et remplacer les NA par des zéros
+data_players_clean <- data_players %>%
+  select(
+    Player,  # Garder la colonne Player pour maintenir la correspondance avec les lignes
+    Total_wins, Wins_percent, AVG_rank, VAR_rank,
+    Clay_wins_percent, Hard_wins_percent, Grass_wins_percent, Carpet_wins_percent,
+    Grand.Slam_nmatches, Grand.Slam_nwins,
+    Masters_nmatches, Masters_nwins,
+    ATP250_nmatches, ATP500_nmatches, Masters.1000_nmatches, Masters.Cup_nmatches
+  ) %>%
+  replace(is.na(.), 0)  # Remplacer les NA par des zéros
+
+# 4. Standardisation des données (sur les données nettoyées)
+data_players_scaled <- scale(data_players_clean[, -1])  # Exclure la colonne Player pour la standardisation
+
+# 5. Appliquer l'algorithme K-Means
+set.seed(123)  # Fixer la seed pour la reproductibilité
+kmeans_result <- kmeans(data_players_scaled, centers = 5, nstart = 25)
+
+# 6. Ajouter les clusters au dataset
+data_players_with_clusters <- data_players_clean %>%
+  mutate(Cluster = as.factor(kmeans_result$cluster))
+
+# 7. Visualisation des clusters avec ggplot2
+ggplot(data_players_with_clusters, aes(x = Total_wins, y = Wins_percent, color = Cluster)) +
+  geom_point() +
+  labs(title = "Clustering des joueurs", x = "Total Wins", y = "Win Percent")
+
+
+
+```
+
+
+```{r}
+# 1. Calculer l'inertie pour différents nombres de clusters (de 1 à 40)
+wss <- sapply(1:40, function(k) {
+  kmeans(data_players_scaled, centers = k, nstart = 25)$tot.withinss
+})
+
+# 2. Tracer le graphique de l'Elbow Method
+ggplot(data.frame(Clusters = 1:40, WSS = wss), aes(x = Clusters, y = WSS)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method", x = "Nombre de Clusters", y = "Within-cluster Sum of Squares (WSS)") +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+# 1. Charger les bibliothèques nécessaires
+library(ggplot2)
+library(cluster)
+
+# 2. Calculer l'inertie pour différents nombres de clusters (de 1 à 40)
+wss <- sapply(1:40, function(k) {
+  kmeans(data_players_scaled, centers = k, nstart = 25)$tot.withinss
+})
+
+# 3. Tracer le graphique de l'Elbow Method
+ggplot(data.frame(Clusters = 1:40, WSS = wss), aes(x = Clusters, y = WSS)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method", x = "Nombre de Clusters", y = "Within-cluster Sum of Squares (WSS)") +
+  theme_minimal()
+
+# 4. Calculer la silhouette pour différents nombres de clusters (de 2 à 40)
+silhouette_scores <- sapply(2:40, function(k) {
+  km <- kmeans(data_players_scaled, centers = k, nstart = 25)
+  ss <- silhouette(km$cluster, dist(data_players_scaled))
+  mean(ss[, 3])  # Moyenne des scores de silhouette
+})
+
+# 5. Tracer les scores de silhouette pour chaque k
+ggplot(data.frame(Clusters = 2:40, Silhouette_Score = silhouette_scores), aes(x = Clusters, y = Silhouette_Score)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Silhouette Method", x = "Nombre de Clusters", y = "Silhouette Score") +
+  theme_minimal()
+
+# 6. Trouver le k optimal basé sur le score de silhouette
+optimal_k <- which.max(silhouette_scores) + 1  # On ajoute 1 car le calcul commence à k=2
+cat("Le nombre optimal de clusters est k =", optimal_k, "\n")
+
+```
+
+```{r}
+# 1. Charger les bibliothèques nécessaires
+library(ggplot2)
+library(cluster)
+library(factoextra)
+
+# 2. Appliquer le K-means (en supposant que le k optimal a été trouvé)
+set.seed(123)  # Pour la reproductibilité
+optimal_k <- 5  # Remplacer par le k optimal trouvé (par exemple 4)
+kmeans_result <- kmeans(data_players_scaled, centers = optimal_k, nstart = 25)
+
+# 3. Réaliser la PCA pour réduire les données à 2 dimensions
+pca_result <- prcomp(data_players_scaled, center = TRUE, scale. = TRUE)
+
+# 4. Extraire les deux premières composantes principales
+pca_data <- as.data.frame(pca_result$x)
+pca_data$Cluster <- as.factor(kmeans_result$cluster)
+
+# 5. Plot de la PCA avec les clusters
+ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(alpha = 0.6, size = 3) +
+  labs(title = "Clustering des joueurs (PCA)", x = "Composante Principale 1", y = "Composante Principale 2") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "blue", "green", "purple", "black")) # Choisir des couleurs adaptées
+
+# 6. Si tu veux une visualisation en 3D, tu peux utiliser la fonction plot_ly de la bibliothèque plotly
+library(plotly)
+plot_ly(pca_data, x = ~PC1, y = ~PC2, z = ~PC3, color = ~Cluster, type = 'scatter3d', mode = 'markers') %>%
+  layout(title = 'Clustering des joueurs (PCA)',
+         scene = list(xaxis = list(title = 'PC1'),
+                      yaxis = list(title = 'PC2'),
+                      zaxis = list(title = 'PC3')))
+
+```
+
+
+# Nettoyage des données 
+
+```{r}
+data_players_clean <- data_players %>%
+  select(
+    Player,  # Garder la colonne Player pour maintenir la correspondance avec les lignes
+    Total_wins, Wins_percent, AVG_rank, VAR_rank,
+    Clay_wins_percent, Hard_wins_percent, Grass_wins_percent, Carpet_wins_percent,
+    Grand.Slam_nmatches, Grand.Slam_nwins,
+    Masters_nmatches, Masters_nwins,
+    ATP250_nmatches, ATP500_nmatches, Masters.1000_nmatches, Masters.Cup_nmatches
+  ) %>%
+  replace(is.na(.), 0)  # Remplacer les NA par des zéros
+```
+
+# Standardisation
+
+```{r}
+data_players_scaled <- data_players_clean %>%
+  select(-Player) %>%
+  scale()  # Standardiser les données
+```
+
+# 4. Appliquer l'algorithme k-means naivement avec 4 clusters
+
+```{r}
+kmeans_result <- kmeans(data_players_scaled, centers = 4, nstart = 25)
+```
+
+# 5. Ajouter les résultats du clustering aux données
+
+```{r}
+data_players_clean <- data_players_clean %>%
+  mutate(Cluster = as.factor(kmeans_result$cluster))
+```
+
+# 6. Calcul des métriques de performance
+# Utilisation de yardstick pour mesurer les performances du modèle kmeans
+
+
+# On crée un "data frame" des clusters et des valeurs réelles (par exemple, les noms de joueurs)
+```{r}
+clustering_results <- data_players_clean %>%
+  select(Player, Cluster)
+  
+```
+
+  
+# 7. Trouver le k optimal
+
+```{r}
+# a. Plot de l'Elbow Method pour identifier le bon k
+wss <- sapply(1:40, function(k) {
+  kmeans(data_players_scaled, centers = k, nstart = 25)$tot.withinss
+})
+```
+
+  
+```{r}
+# Visualisation du WSS pour chaque k
+ggplot(data.frame(k = 1:40, WSS = wss), aes(x = k, y = WSS)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method", x = "Nombre de clusters", y = "Somme des carrés à l'intérieur des clusters") +
+  theme_minimal()
+```
+
+
+```{r}
+# b. Calcul du score silhouette pour différents k
+sil_width <- sapply(2:40, function(k) {
+  km <- kmeans(data_players_scaled, centers = k, nstart = 25)
+  silhouette(km$cluster, dist(data_players_scaled))[, 3] %>%
+    mean()
+})
+```
+
+
+```{r}
+# Visualisation du score silhouette pour chaque k
+ggplot(data.frame(k = 2:40, Silhouette = sil_width), aes(x = k, y = Silhouette)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Silhouette Score", x = "Nombre de clusters", y = "Score silhouette moyen") +
+  theme_minimal()
+```
+
+
+```{r}
+# c. Ré-échantillonnage pour cross-validation répétée pour obtenir le k optimal
+set.seed(123)  # Pour garantir la reproductibilité
+
+# On définit une méthode de resampling avec validation croisée répétée
+cv <- vfold_cv(data_players_clean, v = 5, repeats = 5)
+
+# On évalue les modèles pour différents k
+cv_results <- cv %>%
+  mutate(kmeans_results = map(splits, ~ {
+    train_data <- analysis(.x)
+    kmeans(train_data %>% select(-Player), centers = 4, nstart = 25)
+  }))
+```
+
+
+```{r}
+k_optimal <- 5 # Remplace cette valeur avec le k optimal trouvé par les différentes méthodes
+kmeans_result_optimal <- kmeans(data_players_scaled, centers = k_optimal, nstart = 25)
+
+```
+
+
+```{r}
+# 9. Ajouter le résultat du clustering au dataset
+data_players_clean <- data_players_clean %>%
+  mutate(Cluster = as.factor(kmeans_result_optimal$cluster))
+
+# 10. Visualisation des clusters sur les axes intéressants
+# On va projeter les résultats du clustering sur deux dimensions
+fviz_cluster(kmeans_result_optimal, data = data_players_scaled)
+```
+
+
+```{r}
+# a. Appliquer la PCA
+pca_result <- prcomp(data_players_scaled, center = TRUE, scale. = TRUE)
+
+# b. Plot de la variance expliquée par chaque composante (Scree Plot)
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+ggplot(data.frame(PC = 1:length(variance_explained), Variance = variance_explained), 
+       aes(x = PC, y = Variance)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(title = "Scree Plot (Variance expliquée par chaque composante)",
+       x = "Composante Principale", y = "Variance expliquée") +
+  theme_minimal()
+
+# c. Visualiser les 2 premières composantes principales
+fviz_pca_ind(pca_result, 
+             geom.ind = "point", 
+             col.ind = data_players_clean$Cluster, 
+             palette = "jco", 
+             addEllipses = TRUE, 
+             legend.title = "Cluster") +
+  labs(title = "PCA - Visualisation des clusters")
+```
+
+
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(tidymodels)
+library(cluster)
+library(yardstick)
+library(caret)
+
+# Step 1: Data cleaning
+data_players_clean <- data_players %>%
+  select(
+    Player,  # Keep Player for correspondence
+    Total_wins, Wins_percent, AVG_rank, VAR_rank,
+    Clay_wins_percent, Hard_wins_percent, Grass_wins_percent, Carpet_wins_percent,
+    Grand.Slam_nmatches, Grand.Slam_nwins,
+    Masters_nmatches, Masters_nwins,
+    ATP250_nmatches, ATP500_nmatches, Masters.1000_nmatches, Masters.Cup_nmatches
+  ) %>%
+  replace(is.na(.), 0)  # Replace NAs with 0
+
+# Step 2: Standardize the data
+data_players_scaled <- data_players_clean %>%
+  select(-Player) %>%
+  scale()
+
+# Step 3: Define cross-validation (k-fold with resampling)
+set.seed(123)
+cv <- vfold_cv(data_players_clean, v = 5, repeats = 5)
+
+# Step 4: Run clustering on each resample, and calculate clustering metrics
+
+cv_results <- cv %>%
+  mutate(kmeans_results = map(splits, ~ {
+    # Separate train and test sets
+    train_data <- analysis(.x)
+    test_data <- assessment(.x)
+    
+    # Apply kmeans clustering to train data (k = 4 for example)
+    kmeans_result <- kmeans(train_data %>% select(-Player), centers = 4, nstart = 25)
+    
+    # Assign clusters to train and test data
+    train_data <- train_data %>%
+      mutate(Cluster = as.factor(kmeans_result$cluster))
+    
+    # Assign clusters to test data based on closest cluster centers
+    test_data <- test_data %>%
+      mutate(Cluster = as.factor(
+        apply(select(test_data, -Player), 1, function(x) {
+          # Calculate distance to each cluster center and find the closest one
+          distances <- apply(kmeans_result$centers, 1, function(center) sum((x - center)^2))
+          which.min(distances)  # Assign to the closest cluster
+        })
+      ))
+    
+    # Return the results
+    list(train_data = train_data, test_data = test_data, kmeans_result = kmeans_result)
+  }))
+
+# Step 5: Calculate clustering quality metrics (e.g., silhouette score) for each resample
+cv_results_metrics <- cv_results %>%
+  mutate(silhouette_score = map(kmeans_results, ~ {
+    # Extract the kmeans result and the test data
+    km <- .x$kmeans_result
+    test_data <- .x$test_data
+    
+    # Convert the Cluster factor to numeric (because silhouette requires numeric labels)
+    test_data$Cluster_numeric <- as.numeric(test_data$Cluster)
+    
+    # Calculate distance matrix using only the numeric features (exclude Player and Cluster)
+    dist_matrix <- dist(test_data %>% select(-Player, -Cluster, -Cluster_numeric))
+    
+    # Calculate the silhouette score (make sure the clusters are numeric)
+    silhouette_score <- silhouette(test_data$Cluster_numeric, dist_matrix)
+    
+    # Return the mean silhouette score for the resample
+    mean(silhouette_score[, 3])  # The third column contains the silhouette values
+  }))
+
+# Step 6: Calculate the mean and standard deviation of the silhouette score across all resamples
+cv_results_metrics %>%
+  summarise(
+    mean_silhouette = mean(unlist(silhouette_score)),
+    sd_silhouette = sd(unlist(silhouette_score))
+  )
+
+cv_results_metrics
+
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(purrr)
+
+# Step 1: Extract the silhouette scores for each resample
+cv_results_metrics_long <- cv_results_metrics %>%
+  mutate(silhouette_score = map(kmeans_results, ~ {
+    km <- .x$kmeans_result
+    test_data <- .x$test_data
+    
+    # Convert the Cluster factor to numeric
+    test_data$Cluster_numeric <- as.numeric(test_data$Cluster)
+    
+    # Calculate distance matrix
+    dist_matrix <- dist(test_data %>% select(-Player, -Cluster, -Cluster_numeric))
+    
+    # Calculate silhouette score
+    silhouette_score <- silhouette(test_data$Cluster_numeric, dist_matrix)
+    
+    # Return the silhouette scores as a data frame
+    data.frame(Resample = .x$Resample, Silhouette = silhouette_score[, 3])
+  })) %>%
+  unnest(silhouette_score)  # Unnest the nested list into a tidy data frame
+
+# Step 2: Plot the silhouette scores for each resample
+ggplot(cv_results_metrics_long, aes(x = Resample, y = Silhouette)) +
+  geom_boxplot() +  # Box plot for silhouette scores across resamples
+  theme_minimal() + 
+  labs(
+    title = "Silhouette Scores for Each Resample",
+    x = "Resample",
+    y = "Silhouette Score"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
