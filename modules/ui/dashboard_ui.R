@@ -76,12 +76,39 @@ dashboard_ui <- function(id) {
         textOutput(ns("player_stats"))
       ),
       
+      ##
+      # TABPANEL RESERVÉ A L'ANALYSE VERSUS
+      ## 
       tabPanel(
         title = "Analyse versus",
         h4("Analyse d'une rencontre."),
-        textOutput(ns("match_stats"))
+        fluidRow(
+          column(6, selectizeInput(ns("player_select_1"), "Choisissez le premier joueur :", choices = NULL, multiple = FALSE)),
+          column(6, selectizeInput(ns("player_select_2"), "Choisissez le second joueur :", choices = NULL, multiple = FALSE))
+        ),
+
+        fluidRow(
+          column(3, div(style = "width: 100%", bs4ValueBoxOutput(ns("player1_wins"), width = "100%"))),
+          column(3, div(style = "width: 100%", bs4ValueBoxOutput(ns("ranking1"), width = "100%"))),
+          column(3, div(style = "width: 100%", bs4ValueBoxOutput(ns("player2_wins"), width = "100%"))),
+          column(3, div(style = "width: 100%", bs4ValueBoxOutput(ns("ranking2"), width = "100%")))
+        ),
+
+        textOutput(ns("total_matches_text")),
+
+        fluidRow(
+          column(6, plotlyOutput(ns("ranking_evolution"))),  # Graphique d'évolution du classement
+          column(6, plotlyOutput(ns("points_evolution")))    # Graphique d'évolution des points
+        ),
+        fluidRow(
+          column(6, plotlyOutput(ns("surface_distribution_players"))),  # Graphique de répartition des surfaces
+          column(6, plotlyOutput(ns("wins_by_surface")))       # Graphique du nombre de matchs gagnés par surface
+        )
       ),
       
+      ##
+      # TABPANEL RESERVÉ A L'ANALYSE DES TOURNOIS
+      ## 
       tabPanel(
         title = "Analyse tournois",
         h4("Visualisation cartographique des vainqueurs de tournois."),
@@ -95,7 +122,7 @@ dashboard_ui <- function(id) {
           value = as.Date("2010-01-01"),
           timeFormat = "%Y-%m-%d",
           animate = FALSE,
-          width = "100%"  # On s'assure que le slider occupe toute la largeur
+          width = "100%"  # slider occupe toute la largeur
         ),
         
         # Deuxième ligne : Menu checkbox et carte

@@ -175,8 +175,332 @@ dashboard_server <- function(id, dataset) {
     # FIN PARTIE TENDANCES ET PERFORMANCES #
     ########################################
     
+    #########################
+    # PARTIE ANALYSE VERSUS #
+    #########################
+    
+    observe({
+      player_list <- sort(unique(c(dataset$Player_1, dataset$Player_2)))
+      updateSelectizeInput(session, "player_select", choices = player_list, server = TRUE, options = list(maxOptions = 2000))
+    })
+    
+    # Mise à jour dynamique des joueurs dans les selectizeInput pour "Analyse versus"
+    observe({
+      player_list <- sort(unique(c(dataset$Player_1, dataset$Player_2)))
+      updateSelectizeInput(session, "player_select_1", choices = player_list, server = TRUE, options = list(maxOptions = 2000))
+      updateSelectizeInput(session, "player_select_2", choices = player_list, server = TRUE, options = list(maxOptions = 2000))
+    })
     
     
+    
+    # Statistiques d'un joueur sélectionné
+    output$player_stats <- renderPrint({
+      req(input$player_select)
+      
+      player_matches <- dataset %>%
+        filter(Player_1 == input$player_select | Player_2 == input$player_select)
+      
+      # Récupérer la dernière rencontre du joueur
+      last_match <- player_matches %>%
+        arrange(desc(Date)) %>%
+        slice(1)  # Prendre la dernière ligne
+      
+      # Récupérer le classement ATP selon s'il est Player_1 ou Player_2
+      if (nrow(last_match) > 0) {
+        if (last_match$Player_1 == input$player_select) {
+          ranking <- last_match$Rank_1
+        } else {
+          ranking <- last_match$Rank_2
+        }
+      } else {
+        ranking <- "Classement non disponible"
+      }
+      
+      # AFFICHAGE AVEC LES BOX renderbs4ValueBox
+      # Affichage avec cat() pour bien gérer les retours à la ligne
+      cat(
+        "Nombre de matchs joués par", input$player_select, ":", nrow(player_matches), "\n",
+        "Dernier classement ATP enregistré :", ranking
+      )
+    })
+    
+    # Nombre total de matchs
+    output$total_matches_text <- renderText({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      player2 <- input$player_select_2
+      
+      matches <- dataset %>%
+        filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
+      
+      paste("Nombre total de matchs disputés entre", player1, "et", player2, ":", nrow(matches))
+    })
+    
+    
+    # Victoires du joueur 1
+    output$player1_wins <- renderbs4ValueBox({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      matches <- dataset %>%
+        filter((Player_1 == player1 & Player_2 == input$player_select_2) | (Player_1 == input$player_select_2 & Player_2 == player1))
+      
+      player1_wins <- nrow(matches %>% filter(Winner == player1))
+      
+      bs4ValueBox(
+        value = player1_wins,
+        subtitle = paste("Victoires de", player1),
+        icon = icon("trophy"),
+        color = "success"
+      )
+    })
+    
+    # Victoires du joueur 2
+    output$player2_wins <- renderbs4ValueBox({
+      req(input$player_select_1, input$player_select_2)
+      
+      player2 <- input$player_select_2
+      matches <- dataset %>%
+        filter((Player_1 == input$player_select_1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == input$player_select_1))
+      
+      player2_wins <- nrow(matches %>% filter(Winner == player2))
+      
+      bs4ValueBox(
+        value = player2_wins,
+        subtitle = paste("Victoires de", player2),
+        icon = icon("trophy"),
+        color = "danger"
+      )
+    })
+    
+    # Classement ATP du joueur 1
+    output$ranking1 <- renderbs4ValueBox({
+      req(input$player_select_1)
+      
+      player1 <- input$player_select_1
+      last_match_player1 <- dataset %>%
+        filter(Player_1 == player1 | Player_2 == player1) %>%
+        arrange(desc(Date)) %>%
+        slice(1)
+      
+      ranking1 <- ifelse(last_match_player1$Player_1 == player1, last_match_player1$Rank_1, last_match_player1$Rank_2)
+      
+      bs4ValueBox(
+        value = ranking1,
+        subtitle = paste("Classement ATP de", player1),
+        icon = icon("chart-line"),
+        color = "primary"
+      )
+    })
+    
+    # Classement ATP du joueur 2
+    output$ranking2 <- renderbs4ValueBox({
+      req(input$player_select_2)
+      
+      player2 <- input$player_select_2
+      last_match_player2 <- dataset %>%
+        filter(Player_1 == player2 | Player_2 == player2) %>%
+        arrange(desc(Date)) %>%
+        slice(1)
+      
+      ranking2 <- ifelse(last_match_player2$Player_1 == player2, last_match_player2$Rank_1, last_match_player2$Rank_2)
+      
+      bs4ValueBox(
+        value = ranking2,
+        subtitle = paste("Classement ATP de", player2),
+        icon = icon("chart-line"),
+        color = "primary"
+      )
+    })
+    
+    
+    # Statistiques des rencontres entre les deux joueurs sélectionnés
+    # n'est plus utile car decomposé au dessus 
+    #output$match_stats <- renderText({
+    #  req(input$player_select_1, input$player_select_2)
+    #  
+    #  player1 <- input$player_select_1
+    #  player2 <- input$player_select_2
+    #  
+    #  # Filtrer les matchs entre les deux joueurs
+    #  matches <- dataset %>%
+    #    filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
+    #  
+    #  if (nrow(matches) == 0) {
+    #    return("Aucun match trouvé entre ces deux joueurs.")
+    #  }
+    #  
+    #  # Calculer les statistiques
+    #  total_matches <- nrow(matches)
+    #  player1_wins <- nrow(matches %>% filter(Winner == player1))
+    #  player2_wins <- nrow(matches %>% filter(Winner == player2))
+    #  
+    #  # Obtenir le classement ATP correct pour chaque joueur
+    #  last_match_player1 <- dataset %>%
+    #    filter(Player_1 == player1 | Player_2 == player1) %>%
+    #    arrange(desc(Date)) %>%
+    #    slice(1)
+    #  
+    #  last_match_player2 <- dataset %>%
+    #    filter(Player_1 == player2 | Player_2 == player2) %>%
+    #    arrange(desc(Date)) %>%
+    #    slice(1)
+    #  
+    #  ranking1 <- ifelse(last_match_player1$Player_1 == player1, last_match_player1$Rank_1, last_match_player1$Rank_2)
+    #  ranking2 <- ifelse(last_match_player2$Player_1 == player2, last_match_player2$Rank_1, last_match_player2$Rank_2)
+    #  
+    # Afficher les statistiques
+    #  paste(
+    #    "Nombre total de matchs :", total_matches, "\n",
+    #    player1, "a gagné", player1_wins, "matchs.\n",
+    #    player2, "a gagné", player2_wins, "matchs.\n",
+    #    "Dernier classement ATP de", player1, ":", ranking1, "\n",
+    #    "Dernier classement ATP de", player2, ":", ranking2
+    #  )
+    #})
+    
+    # Graphique : Évolution du classement des deux joueurs
+    output$ranking_evolution <- renderPlotly({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      player2 <- input$player_select_2
+      
+      # Filtrer les données pour chaque joueur
+      player1_data <- dataset %>%
+        filter(Player_1 == player1 | Player_2 == player1) %>%
+        mutate(Rank = ifelse(Player_1 == player1, Rank_1, Rank_2)) %>%
+        select(Date, Rank)
+      
+      player2_data <- dataset %>%
+        filter(Player_1 == player2 | Player_2 == player2) %>%
+        mutate(Rank = ifelse(Player_1 == player2, Rank_1, Rank_2)) %>%
+        select(Date, Rank)
+      
+      # Tracer le graphique
+      plot_ly() %>%
+        add_trace(data = player1_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = player1) %>%
+        add_trace(data = player2_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = player2) %>%
+        layout(
+          title = "Évolution du classement ATP",
+          xaxis = list(title = "Date"),
+          yaxis = list(title = "Classement ATP")
+        )
+    })
+    
+    # Graphique : Évolution du nombre de points des deux joueurs
+    output$points_evolution <- renderPlotly({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      player2 <- input$player_select_2
+      
+      # Filtrer les données pour chaque joueur
+      player1_data <- dataset %>%
+        filter(Player_1 == player1 | Player_2 == player1) %>%
+        mutate(Points = ifelse(Player_1 == player1, Pts_1, Pts_2)) %>%
+        select(Date, Points)
+      
+      player2_data <- dataset %>%
+        filter(Player_1 == player2 | Player_2 == player2) %>%
+        mutate(Points = ifelse(Player_1 == player2, Pts_1, Pts_2)) %>%
+        select(Date, Points)
+      
+      # Tracer le graphique
+      plot_ly() %>%
+        add_trace(data = player1_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines+markers", name = player1) %>%
+        add_trace(data = player2_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines+markers", name = player2) %>%
+        layout(
+          title = "Évolution du nombre de points",
+          xaxis = list(title = "Date"),
+          yaxis = list(title = "Points")
+        )
+    })
+    
+    
+    # Graphique : Répartition des surfaces des matchs entre les deux joueurs
+    output$surface_distribution_players <- renderPlotly({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      player2 <- input$player_select_2
+      
+      # Filtrer les matchs entre les deux joueurs
+      matches <- dataset %>%
+        filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
+      
+      if (nrow(matches) == 0) {
+        return(plot_ly() %>%
+                 layout(title = "Aucun match trouvé entre ces deux joueurs."))
+      }
+      
+      # Calculer la répartition des surfaces
+      surface_counts <- table(matches$Surface)
+      
+      # Définir les couleurs pour chaque type de surface
+      colors <- c("Clay" = "#ff7f0e", "Grass" = "#2ca02c", "Hard" = "#d62728", "Carpet" = "#1f77b4")
+      
+      # Tracer le graphique en disque
+      plot_ly(
+        labels = names(surface_counts),
+        values = as.numeric(surface_counts),
+        type = "pie",
+        hole = 0.4,  # Pour créer un effet "donut"
+        textinfo = "label+percent",
+        marker = list(colors = colors[names(surface_counts)], line = list(color = "#FFFFFF", width = 2))  # Ajout de bordures blanches
+      ) %>%
+        layout(
+          title = "Répartition des surfaces des matchs entre les deux joueurs",
+          showlegend = TRUE,
+          legend = list(orientation = "h", x = 0.3, y = -0.2)  # Légende en bas pour plus de clarté
+        )
+    })
+    
+    # Graphique : Nombre de matchs gagnés par surface
+    output$wins_by_surface <- renderPlotly({
+      req(input$player_select_1, input$player_select_2)
+      
+      player1 <- input$player_select_1
+      player2 <- input$player_select_2
+      
+      # Filtrer les matchs entre les deux joueurs
+      matches <- dataset %>%
+        filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
+      
+      if (nrow(matches) == 0) {
+        return(plot_ly() %>%
+                 layout(title = "Aucun match trouvé entre ces deux joueurs."))
+      }
+      
+      # Calculer le nombre de matchs gagnés par chaque joueur sur chaque surface
+      wins_data <- matches %>%
+        group_by(Surface, Winner) %>%
+        summarise(Wins = n()) %>%
+        filter(Winner %in% c(player1, player2))
+      
+      # Tracer le graphique à barres empilées
+      plot_ly(
+        data = wins_data,
+        x = ~Surface,
+        y = ~Wins,
+        color = ~Winner,
+        type = "bar",
+        text = ~paste(Wins),
+        textposition = "auto"
+      ) %>%
+        layout(
+          title = "Nombre de matchs gagnés par surface",
+          xaxis = list(title = "Surface"),
+          yaxis = list(title = "Nombre de matchs gagnés"),
+          barmode = "stack"  # Empiler les barres pour chaque joueur
+        )
+    })
+    
+    
+    #############################
+    # FIN PARTIE ANALYSE VERSUS #
+    #############################
     
     
     
@@ -303,22 +627,7 @@ dashboard_server <- function(id, dataset) {
     
     
     
-    # Mise à jour dynamique des joueurs dans le selectInput
-    observe({
-      updateSelectInput(session, "player_select", choices = unique(c(dataset$Player_1, dataset$Player_2)))
-    })
-    
-    # Statistiques d'un joueur sélectionné
-    output$player_stats <- renderText({
-      req(input$player_select)
-      player_matches <- dataset %>% 
-        filter(Player_1 == input$player_select | Player_2 == input$player_select)
-      
-      paste("Nombre de matchs joués par", input$player_select, ":", nrow(player_matches))
-    })
-    
-    # Placeholder pour les autres sections
-    output$match_stats <- renderText("Données sur un match spécifique bientôt disponibles...")
+
     output$tournament_stats <- renderText("Analyse des tournois en cours de développement...")
     
   })
