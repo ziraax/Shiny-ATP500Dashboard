@@ -10,8 +10,22 @@ library("tidyverse")
 
 ```{r}
 data <- read.csv("../data/atp_tennis.csv")
+dataset <- read.csv("../data/atp_tennis.csv")
+
 glimpse(data)
 ```
+
+
+```{r}
+tournament_coords <- read.csv2("../data/geocode2.csv", header = TRUE, sep=",")
+data_with_coords <- merge(dataset, tournament_coords, by="Tournament", all.x = TRUE)
+head(data_with_coords)
+```
+
+```{r}
+data_with_coords$Best.of
+```
+
 
 
 ```{r}

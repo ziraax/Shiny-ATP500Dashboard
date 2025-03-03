@@ -431,8 +431,8 @@ dashboard_server <- function(id, dataset) {
         filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
       
       if (nrow(matches) == 0) {
-        return(plot_ly() %>%
-                 layout(title = "Aucun match trouvé entre ces deux joueurs."))
+        return(plot_ly(x = 0, y = 0, type = "scatter", mode = "markers") %>%
+                 layout(title = "Aucun match trouvé entre ces deux joueurs."))  # On spécifie x, y, type et mode juste pour pas avoir de warnings dans la console 
       }
       
       # Calculer la répartition des surfaces
@@ -469,7 +469,7 @@ dashboard_server <- function(id, dataset) {
         filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
       
       if (nrow(matches) == 0) {
-        return(plot_ly() %>%
+        return(plot_ly(x = 0, y = 0, type = "scatter", mode = "markers") %>%      # On spécifie x, y, type et mode juste pour pas avoir de warnings dans la console 
                  layout(title = "Aucun match trouvé entre ces deux joueurs."))
       }
       
@@ -510,8 +510,8 @@ dashboard_server <- function(id, dataset) {
     ################################
     
     tournament_coords <- read.csv2("./data/geocode2.csv", header = TRUE, sep=",")
-    data_with_coords <- merge(data, tournament_coords, by="Tournament", all.x = TRUE)
-
+    data_with_coords <- merge(dataset, tournament_coords, by="Tournament", all.x = TRUE)
+    head(data_with_coords)
     
     data_with_coords$Latitude <- as.numeric(data_with_coords$Latitude)
     data_with_coords$Longitude <- as.numeric(data_with_coords$Longitude)
@@ -540,7 +540,7 @@ dashboard_server <- function(id, dataset) {
           ),
           
           radius = case_when(
-            Series == "Grand Slam" ~ 20,  # Grand Slam - Taille plus grande
+            Series == "Grand Slam" ~ 8,  # Grand Slam - Taille plus grande
             TRUE ~ 8   # Autres tournois en taille standard
           )
         )
@@ -582,6 +582,8 @@ dashboard_server <- function(id, dataset) {
           Last_Edition == "Ongoing" | as.numeric(Last_Edition) >= as.numeric(format(input$date_slider, "%Y"))
         )
       
+      data_map
+      
       leafletProxy("tournament_map", data = data_map) %>%
         clearMarkers() %>%
         addCircleMarkers(
@@ -604,7 +606,7 @@ dashboard_server <- function(id, dataset) {
                           paste0("🎾 - ", Series))), "<br>",
             "⛳ Côté court : ", 
             ifelse(Court == "Outdoor", "🌞 - Outdoor", "🏠 - Indoor"), "<br>",
-            "🔢 Meilleur de : ", Best.of, " sets<br>",
+            "🔢 Meilleur de : ", data_with_coords$Best.of, " sets<br>",
             "🗓️ Première édition : ", First_Edition, "<br>",
             "🗓️ Dernière édition : ", Last_Edition
           ),

@@ -117,8 +117,8 @@ dashboard_ui <- function(id) {
         sliderInput(
           inputId = ns("date_slider"),
           label = "Sélectionnez une date :",
-          min = as.Date(min(data$Date, na.rm = TRUE)),
-          max = as.Date(max(data$Date), na.rm = TRUE),
+          min = as.Date("2000-01-01"),
+          max = as.Date("2024-12-31"),
           value = as.Date("2010-01-01"),
           timeFormat = "%Y-%m-%d",
           animate = FALSE,
