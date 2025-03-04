@@ -46,7 +46,7 @@ dashboard_server <- function(id, dataset) {
       surface_counts <- table(dataset$Surface)
       
       # Définition de 4 couleurs pour les surfaces
-      colors <- c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728")  # Bleu, Orange, Vert, Rouge
+      colors <- c("#d62728", "#ff7f0e", "#2ca02c", "#1f77b4")
       
       plot_ly(
         labels = names(surface_counts),
@@ -110,7 +110,7 @@ dashboard_server <- function(id, dataset) {
         group_by(Year) %>%
         summarise(Num_Matches = n()) %>%
         plot_ly(x = ~Year, y = ~Num_Matches, type = "scatter", mode = "lines+markers",
-                line = list(color = "blue")) %>%
+                marker = list(color = "darkblue")) %>%
         layout(
           title = "Évolution du nombre de matchs par année",
           xaxis = list(title = "Année"),
@@ -130,7 +130,7 @@ dashboard_server <- function(id, dataset) {
       
       plot_ly(top_winners_by_year, x = ~Year, y = ~Wins, type = "scatter", mode = "lines+markers",
               text = ~Winner, hoverinfo = "text+y",
-              marker = list(color = "blue")) %>%
+              marker = list(color = "darkblue")) %>%
         layout(
           title = "Joueur avec le plus de victoires par année",
           xaxis = list(title = "Année"),
@@ -146,7 +146,7 @@ dashboard_server <- function(id, dataset) {
         group_by(Year) %>% 
         summarise(Num_Tournaments = n_distinct(Tournament), .groups = "drop") %>% 
         plot_ly(x = ~Year, y = ~Num_Tournaments, type="scatter", mode = "lines+markers",
-                marker = list(color = "blue")) %>% 
+                marker = list(color = "darkblue")) %>% 
         layout(
           title = "Evolution du nombre de tournois par année",
           xaxis = list(title = "Année"),
@@ -163,7 +163,7 @@ dashboard_server <- function(id, dataset) {
         group_by(Year) %>% 
         summarise(Num_Upsets = n(), .groups = "drop") %>% 
         plot_ly(x = ~Year, y = ~Num_Upsets, type="scatter", mode = "lines+markers",
-                marker = list(color= "blue")) %>% 
+                marker = list(color= "darkblue")) %>% 
         layout(
           title = "Evolution du nombre d'upsets par année",
           xaxis = list(title = "Année"),
@@ -380,8 +380,8 @@ dashboard_server <- function(id, dataset) {
       
       # Tracer le graphique
       plot_ly() %>%
-        add_trace(data = player1_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = player1) %>%
-        add_trace(data = player2_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = player2) %>%
+        add_trace(data = player1_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines", name = player1,  line = list(color='#28a745')) %>%
+        add_trace(data = player2_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines", name = player2,  line = list(color='#dc3545')) %>%
         layout(
           title = "Évolution du classement ATP",
           xaxis = list(title = "Date"),
@@ -409,8 +409,8 @@ dashboard_server <- function(id, dataset) {
       
       # Tracer le graphique
       plot_ly() %>%
-        add_trace(data = player1_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines+markers", name = player1) %>%
-        add_trace(data = player2_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines+markers", name = player2) %>%
+        add_trace(data = player1_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines", name = player1, line = list(color='#28a745')) %>%
+        add_trace(data = player2_data, x = ~Date, y = ~Points, type = "scatter", mode = "lines", name = player2, line = list(color='#dc3545')) %>%
         layout(
           title = "Évolution du nombre de points",
           xaxis = list(title = "Date"),
@@ -439,7 +439,7 @@ dashboard_server <- function(id, dataset) {
       surface_counts <- table(matches$Surface)
       
       # Définir les couleurs pour chaque type de surface
-      colors <- c("Clay" = "#ff7f0e", "Grass" = "#2ca02c", "Hard" = "#d62728", "Carpet" = "#1f77b4")
+      colors <- c("Clay" = "#ff7f0e", "Grass" = "#2ca02c", "Hard" = "#1f77b4", "Carpet" = "#d62728" )
       
       # Tracer le graphique en disque
       plot_ly(
@@ -485,6 +485,7 @@ dashboard_server <- function(id, dataset) {
         x = ~Surface,
         y = ~Wins,
         color = ~Winner,
+        colors = c("#dc3545", "#28a745"),
         type = "bar",
         text = ~paste(Wins),
         textposition = "auto"
@@ -527,10 +528,10 @@ dashboard_server <- function(id, dataset) {
         slice_max(Date, n=1) %>% 
         mutate(
           color = case_when(
-            Surface == "Hard" ~ "#FF5733",    # Hard - Orange
-            Surface == "Grass" ~ "#28B463",   # Grass - Green
-            Surface == "Clay" ~ "#8E44AD",    # Clay - Purple
-            Surface == "Carpet" ~ "#F39C12",  # Carpet - Yellow
+            Surface == "Hard" ~ "#1f77b4",    # Hard - Orange
+            Surface == "Grass" ~ "#2ca02c",   # Grass - Green
+            Surface == "Clay" ~ "#ff7f0e",    # Clay - Purple
+            Surface == "Carpet" ~ "#d62728",  # Carpet - Yellow
             TRUE ~ "#BDC3C7"  # Autre surface - Gris
           ),
           
@@ -565,8 +566,8 @@ dashboard_server <- function(id, dataset) {
         setView(lng = 0, lat = 30, zoom = 2) %>%  
         addLegend(
           position = "bottomright", 
-          colors = c("#FF5733", "#28B463", "#8E44AD", "#F39C12"),  # Couleurs de la surface
-          labels = c("🟫 Hard", "🌱 Grass", "🟩 Clay", "💠 Carpet"),
+          colors = c("#1f77b4" , "#2ca02c", "#ff7f0e", "#d62728"),  # Couleurs de la surface
+          labels = c("🟦 Hard", "🌱 Grass", "🟧 Clay", "🟥 Carpet"),
           title = "Surface des Tournois"
         )
     })
@@ -596,17 +597,16 @@ dashboard_server <- function(id, dataset) {
             "🏙️ Ville : ", City, "<br>",
             "📍 Lieu : ", Venue, "<br>",
             "🏸 Surface : ", 
-            ifelse(Surface == "Hard", "🟫 - Hard", 
+            ifelse(Surface == "Hard", "🟦 - Hard", 
                    ifelse(Surface == "Grass", "🌱 - Grass",
-                          ifelse(Surface == "Clay", "🟩 - Clay", 
-                                 ifelse(Surface == "Carpet", "💠 - Carpet", "❓ - Unknown")))), "<br>",
+                          ifelse(Surface == "Clay", "🟧 - Clay", 
+                                 ifelse(Surface == "Carpet", "🟥 - Carpet", "❓ - Unknown")))), "<br>",
             "🏆 Type de tournoi : ", 
             ifelse(Series == "Grand Slam", "🏅 - Grand Slam", 
                    ifelse(Series == "International", "🌍 - International", 
                           paste0("🎾 - ", Series))), "<br>",
             "⛳ Côté court : ", 
-            ifelse(Court == "Outdoor", "🌞 - Outdoor", "🏠 - Indoor"), "<br>",
-            "🔢 Meilleur de : ", data_with_coords$Best.of, " sets<br>",
+            ifelse(Court == "Outdoor", "🌞 - Outdoor", "🏟️ - Indoor"), "<br>",
             "🗓️ Première édition : ", First_Edition, "<br>",
             "🗓️ Dernière édition : ", Last_Edition
           ),

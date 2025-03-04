@@ -80,7 +80,7 @@ pca_data_3d <- as_tibble(pca_result$x) %>%
 # Réduire le nombre de points par cluster de manière dynamique (50 points maximum par cluster, si possible)
 pca_data_3d_sampled <- pca_data_3d %>%
   group_by(cluster) %>%
-  sample_n(min(n(), 10)) %>%
+  sample_n(min(n(), 20)) %>%
   ungroup()
 
 # Visualisation 3D avec plotly

@@ -1,0 +1,201 @@
+
+
+
+```{r}
+match_data <- read.csv("../data/atp_tennis.csv")
+player_data <- read.csv("../data/players_stats.csv")
+```
+
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(caret)
+library(ggplot2)
+library(lubridate)
+
+# Step 1: Merge match data with player data
+merged_data <- match_data %>%
+  left_join(player_data, by = c("Player_1" = "Player")) %>%
+  left_join(player_data, by = c("Player_2" = "Player"), suffix = c("_1", "_2"))
+
+# Step 2: Feature Engineering
+merged_data <- merged_data %>%
+  mutate(
+    # Player-specific features
+    rank_diff = Rank_1 - Rank_2,
+    wins_percent_diff = Wins_percent_1 - Wins_percent_2,
+    hard_wins_percent_diff = Hard_wins_percent_1 - Hard_wins_percent_2,
+    clay_wins_percent_diff = Clay_wins_percent_1 - Clay_wins_percent_2,
+    grass_wins_percent_diff = Grass_wins_percent_1 - Grass_wins_percent_2,
+    total_wins_diff = Total_wins_1 - Total_wins_2,
+    
+    # Match-specific features
+    surface = as.factor(Surface),
+    series = as.factor(Series),
+    best_of = as.factor(Best.of),
+    round = as.factor(Round),
+    
+    # Contextual features
+    age_diff = as.numeric(difftime(ymd(Date_of_birth_2), ymd(Date_of_birth_1), units = "days")) / 365,
+    handedness = ifelse(Hand_1 == Hand_2, "Same", "Different")
+  )
+
+# Step 3: Handle missing values
+# Check for missing values in the dataset
+colSums(is.na(merged_data))
+
+# Option 1: Remove rows with missing values (if the number is small)
+merged_data <- merged_data %>%
+  drop_na()
+
+# Option 2: Impute missing values (e.g., replace with mean or median)
+# Example: Impute numeric columns with median
+merged_data <- merged_data %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), median(., na.rm = TRUE), .)))
+
+# Step 4: Define the target variable
+# Convert target to a factor with valid R variable names
+merged_data$target <- ifelse(merged_data$Winner == merged_data$Player_1, "Class1", "Class0")
+merged_data$target <- as.factor(merged_data$target)
+
+# Step 5: Select relevant features for modeling
+model_data <- merged_data %>%
+  select(
+    target, rank_diff, wins_percent_diff, hard_wins_percent_diff,
+    clay_wins_percent_diff, grass_wins_percent_diff, total_wins_diff,
+    surface, series, best_of, round, age_diff, handedness
+  )
+
+# Step 6: Split the data into training and testing sets
+set.seed(123)
+train_index <- createDataPartition(model_data$target, p = 0.8, list = FALSE)
+train_data <- model_data[train_index, ]
+test_data <- model_data[-train_index, ]
+
+# Step 7: Set up repeated cross-validation
+ctrl <- trainControl(
+  method = "repeatedcv",  # Repeated cross-validation
+  number = 10,            # Number of folds
+  repeats = 5,            # Number of repeats
+  summaryFunction = defaultSummary,  # Use accuracy as the metric
+  classProbs = TRUE       # Enable probability predictions
+)
+
+# Step 8: Train a logistic regression model
+logistic_model <- train(
+  target ~ .,  # Predict target using all features
+  data = train_data,      # Training data
+  method = "glm",         # Logistic regression
+  family = "binomial",    # Binary classification
+  trControl = ctrl,       # Cross-validation settings
+  metric = "Accuracy"     # Optimize for accuracy
+)
+
+# Step 9: Evaluate the model on the test set
+test_predictions <- predict(logistic_model, test_data)
+conf_matrix <- confusionMatrix(test_predictions, test_data$target)
+print(conf_matrix)
+
+# Step 10: Visualize the cross-validation results
+cv_results <- logistic_model$results
+ggplot(cv_results, aes(x = 1:nrow(cv_results), y = Accuracy)) +
+  geom_point(size = 3, color = "blue") +
+  geom_line(color = "red") +
+  labs(
+    title = "Cross-Validation Accuracy",
+    x = "Fold",
+    y = "Accuracy"
+  ) +
+  theme_minimal()
+
+# Step 11: Display feature importance (for logistic regression)
+importance <- varImp(logistic_model)
+plot(importance, main = "Feature Importance")
+```
+
+```{r}
+# Fonction pour extraire les données d'un joueur
+extract_player_data <- function(player_name) {
+  player_data %>% filter(Player == player_name) %>%
+    select(
+      Rank = AVG_rank,  # Utiliser AVG_rank comme classement
+      Wins_percent,
+      Hard_wins_percent,
+      Clay_wins_percent,
+      Grass_wins_percent,
+      Total_wins,
+      Date_of_birth,
+      Hand
+    )
+}
+
+# Exemple d'utilisation
+player1_data <- extract_player_data("Federer R.")
+player2_data <- extract_player_data("Nadal R.")
+
+
+# Fonction pour créer une nouvelle ligne de données
+create_new_match <- function(player1_data, player2_data) {
+  data.frame(
+    rank_diff = player1_data$Rank - player2_data$Rank,
+    wins_percent_diff = player1_data$Wins_percent - player2_data$Wins_percent,
+    hard_wins_percent_diff = player1_data$Hard_wins_percent - player2_data$Hard_wins_percent,
+    clay_wins_percent_diff = player1_data$Clay_wins_percent - player2_data$Clay_wins_percent,
+    grass_wins_percent_diff = player1_data$Grass_wins_percent - player2_data$Grass_wins_percent,
+    total_wins_diff = player1_data$Total_wins - player2_data$Total_wins,
+    surface = factor("Clay", levels = levels(merged_data$surface)),  # Surface par défaut
+    series = factor("International", levels = levels(merged_data$series)),  # Série par défaut
+    best_of = factor(3, levels = levels(merged_data$best_of)),  # Nombre de sets par défaut
+    round = factor("1st Round", levels = levels(merged_data$round)),  # Tour par défaut
+    age_diff = as.numeric(difftime(ymd(player2_data$Date_of_birth), ymd(player1_data$Date_of_birth), units = "days")) / 365,
+    handedness = factor("Same")
+  )
+}
+
+# Exemple d'utilisation
+new_match <- create_new_match(player1_data, player2_data)
+print(new_match)
+
+
+
+# Fonction pour prédire la probabilité de victoire
+predict_winner_probability <- function(player1_name, player2_name) {
+  # Extraire les données des joueurs
+  player1_data <- extract_player_data(player1_name)
+  player2_data <- extract_player_data(player2_name)
+  
+  # Vérifier si les joueurs existent dans le dataset
+  if (nrow(player1_data) == 0) {
+    stop(paste("Le joueur", player1_name, "n'a pas été trouvé dans le dataset."))
+  }
+  if (nrow(player2_data) == 0) {
+    stop(paste("Le joueur", player2_name, "n'a pas été trouvé dans le dataset."))
+  }
+  
+  # Créer une nouvelle ligne de données
+  new_match <- create_new_match(player1_data, player2_data)
+  
+  # Vérifier les valeurs manquantes
+  if (any(is.na(new_match))) {
+    stop("Des valeurs manquantes (NA) ont été détectées dans les nouvelles données. Veuillez vérifier les données des joueurs.")
+  }
+  
+  # Prédire la probabilité de victoire pour Player_1
+  prob_player1_win <- predict(logistic_model, new_match, type = "prob")$Class1
+  prob_player2_win <- 1 - prob_player1_win
+  
+  # Retourner les résultats
+  result <- data.frame(
+    Player = c(player1_name, player2_name),
+    Probability_of_Winning = c(prob_player1_win, prob_player2_win)
+  )
+  
+  return(result)
+}
+
+# Exemple d'utilisation
+predict_winner_probability("Djokovic N.", "Nadal R.")
+```
+

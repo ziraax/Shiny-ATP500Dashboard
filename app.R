@@ -14,6 +14,7 @@ source("modules/server/clustering_server.R")
 source("modules/server/battle_server.R")
 
 dataset <- read_csv("data/atp_tennis.csv")
+player_stat <- read_csv("data/players_stats.csv")
 
 # UI principale
 ui <- bs4DashPage(
@@ -67,7 +68,7 @@ server <- function(input, output, session) {
   # Appels des modules (avec moduleServer)
   home_server("home_ui", dataset)
   dashboard_server("dashboard_ui", dataset)
-  clustering_server("clustering_ui")
+  clustering_server("clustering_ui", player_stat)
   battle_server("battle_ui")
 }
 
