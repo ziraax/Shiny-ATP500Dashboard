@@ -2,7 +2,7 @@ clustering_server <- function(id, player_stat) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    # Nettoyage et standardisation des données
+    # Nettoyage des données (sans standardisation)
     player_stat_clean <- reactive({
       player_stat %>%
         select(
@@ -15,58 +15,98 @@ clustering_server <- function(id, player_stat) {
         replace(is.na(.), 0)  # Remplacer les NA par des zéros
     })
     
+    # Standardisation des données pour le clustering
     player_stat_scaled <- reactive({
       player_stat_clean() %>%
         mutate(across(-Player, scale))  # Standardisation sans toucher à la colonne 'Player'
     })
     
+    # Mettre à jour les choix pour les axes X et Y
+    observe({
+      updateSelectInput(session, "x_axis", choices = names(player_stat_clean() %>% select(-Player)))
+      updateSelectInput(session, "y_axis", choices = names(player_stat_clean() %>% select(-Player)))
+    })
+    
     # Réactive pour recalculer le clustering en fonction de k
     clusters <- reactive({
       req(input$k_value)  # S'assurer que k est défini
+      
+      # Calculer les clusters à partir des données standardisées
       kmeans_result <- kmeans(player_stat_scaled() %>% select(-Player), centers = input$k_value, nstart = 25)
-      player_stat_scaled() %>%
+      
+      # Ajouter les clusters aux données non standardisées
+      player_stat_clean() %>%
         mutate(cluster = as.factor(kmeans_result$cluster))
     })
     
-    # Graphique des clusters en 2D
-    output$cluster_plot_2d <- renderPlot({
-      ggplot(clusters(), aes(x = Total_wins, y = AVG_rank, color = cluster, label = Player)) +
-        geom_point(size = 3) +
-        geom_text(aes(label = Player), hjust = 0.5, vjust = -0.5, size = 3, show.legend = FALSE) +
-        labs(title = "Clusters en fonction des Victoires Totales et du Rang Moyen",
-             x = "Total des victoires", y = "Rang moyen") +
-        theme_minimal()
+    # Ré-échantillonnage des points par cluster
+    sampled_data <- reactive({
+      req(input$max_points_per_cluster)
+      clusters() %>%
+        group_by(cluster) %>%
+        sample_n(min(n(), input$max_points_per_cluster)) %>%
+        ungroup()
     })
     
-    # PCA en 2D
-    output$pca_plot_2d <- renderPlot({
-      pca_result <- prcomp(clusters() %>% select(-cluster, -Player), center = TRUE, scale. = TRUE)
+    # Graphique des clusters en 2D avec plotly (données non standardisées)
+    output$cluster_plot_2d <- renderPlotly({
+      req(input$x_axis, input$y_axis)  # S'assurer que les axes sont sélectionnés
+      
+      # Utiliser les données non standardisées pour l'affichage
+      data <- sampled_data()
+      
+      plot_ly(data, x = as.formula(paste0("~", input$x_axis)), 
+              y = as.formula(paste0("~", input$y_axis)), 
+              color = ~cluster, text = ~Player,
+              type = "scatter", mode = "markers+text", marker = list(size = 10)) %>%
+        layout(title = "Clusters en fonction des axes sélectionnés",
+               xaxis = list(title = input$x_axis),
+               yaxis = list(title = input$y_axis))
+    })
+    
+    # PCA en 2D avec plotly (données standardisées et ré-échantillonnées)
+    output$pca_plot_2d <- renderPlotly({
+      # Calculer la PCA sur les données standardisées
+      pca_result <- prcomp(player_stat_scaled() %>% select(-Player), center = TRUE, scale. = TRUE)
+      
+      # Extraire les scores PCA et ajouter les clusters
       pca_data <- as_tibble(pca_result$x) %>%
         select(PC1, PC2) %>%
         mutate(cluster = clusters()$cluster, Player = clusters()$Player)
       
-      ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster, label = Player)) +
-        geom_point(size = 3) +
-        geom_text(aes(label = Player), hjust = 0.5, vjust = -0.5, size = 3, show.legend = FALSE) +
-        labs(title = "PCA - Réduction à 2 dimensions",
-             x = "PC1", y = "PC2") +
-        theme_minimal()
+      # Appliquer le ré-échantillonnage aux données PCA
+      pca_data_sampled <- pca_data %>%
+        group_by(cluster) %>%
+        sample_n(min(n(), input$max_points_per_cluster)) %>%
+        ungroup()
+      
+      # Afficher le graphique PCA 2D
+      plot_ly(pca_data_sampled, x = ~PC1, y = ~PC2, color = ~cluster, text = ~Player,
+              type = "scatter", mode = "markers+text", marker = list(size = 10)) %>%
+        layout(title = "PCA - Réduction à 2 dimensions",
+               xaxis = list(title = "PC1"),
+               yaxis = list(title = "PC2"))
     })
     
-    # PCA en 3D
+    # PCA en 3D avec plotly (données standardisées et ré-échantillonnées)
     output$pca_plot_3d <- renderPlotly({
-      pca_result <- prcomp(clusters() %>% select(-cluster, -Player), center = TRUE, scale. = TRUE)
+      # Calculer la PCA sur les données standardisées
+      pca_result <- prcomp(player_stat_scaled() %>% select(-Player), center = TRUE, scale. = TRUE)
+      
+      # Extraire les scores PCA et ajouter les clusters
       pca_data_3d <- as_tibble(pca_result$x) %>%
         select(PC1, PC2, PC3) %>%
         mutate(cluster = clusters()$cluster, Player = clusters()$Player)
       
-      # Échantillonnage pour éviter la surcharge
+      # Appliquer le ré-échantillonnage aux données PCA
       pca_data_3d_sampled <- pca_data_3d %>%
         group_by(cluster) %>%
-        sample_n(min(n(), 20)) %>%
+        sample_n(min(n(), input$max_points_per_cluster)) %>%
         ungroup()
       
-      plot_ly(pca_data_3d_sampled, x = ~PC1, y = ~PC2, z = ~PC3, color = ~cluster, text = ~Player, type = "scatter3d", mode = "markers+text") %>%
+      # Afficher le graphique PCA 3D
+      plot_ly(pca_data_3d_sampled, x = ~PC1, y = ~PC2, z = ~PC3, color = ~cluster, text = ~Player,
+              type = "scatter3d", mode = "markers+text") %>%
         layout(title = "PCA - Visualisation 3D des clusters",
                scene = list(xaxis = list(title = 'PC1'),
                             yaxis = list(title = 'PC2'),
