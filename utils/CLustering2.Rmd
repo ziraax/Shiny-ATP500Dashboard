@@ -1,0 +1,94 @@
+```{r}
+library(tidyverse)
+data <- read.csv("../data/atp_tennis.csv")
+data_players <- read.csv("../data/players_stats.csv")
+```
+
+
+```{r}
+# Chargement des librairies nécessaires
+library(tidymodels)
+library(cluster)  # Pour silhouette score
+library(factoextra)  # Pour l'analyse de clustering
+library(ggplot2)  # Pour la visualisation ggplot2
+library(plotly)  # Pour la visualisation interactive
+
+# Nettoyage et sélection des colonnes
+data_players_clean <- data_players %>%
+  select(
+    Player, Total_wins, Wins_percent, AVG_rank, VAR_rank,
+    Clay_wins_percent, Hard_wins_percent, Grass_wins_percent, Carpet_wins_percent,
+    Grand.Slam_nmatches, Grand.Slam_nwins,
+    Masters_nmatches, Masters_nwins,
+    ATP250_nmatches, ATP500_nmatches, Masters.1000_nmatches, Masters.Cup_nmatches
+  ) %>%
+  replace(is.na(.), 0)  # Remplacer les NA par des zéros
+
+# Standardisation des données (sans la colonne Player)
+data_players_scaled <- data_players_clean %>%
+  mutate(across(-Player, scale))  # Standardisation sans toucher à la colonne 'Player'
+
+# K-Means clustering avec k = 5
+set.seed(123)
+kmeans_result <- kmeans(data_players_scaled %>% select(-Player), centers = 3, nstart = 25)
+
+# Ajouter les clusters et réintroduire la colonne 'Player'
+data_players_scaled <- data_players_scaled %>%
+  mutate(cluster = as.factor(kmeans_result$cluster)) %>%
+  bind_cols(Player = data_players_clean$Player)
+
+
+data_players_scaled <- data_players_scaled %>% 
+  rename(Player = Player...1)
+
+data_players_scaled <- data_players_scaled %>% 
+  select(-Player...19)
+
+data_players_scaled
+
+```
+
+```{r}
+# Visualisation des clusters avec ggplot2
+ggplot(data_players_scaled, aes(x = Total_wins, y = AVG_rank, color = cluster, label = Player)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = Player), hjust = 0.5, vjust = -0.5, size = 3, show.legend = FALSE) +
+  labs(title = "Clusters en fonction des Victoires Totales et du Rang Moyen",
+       x = "Total des victoires", y = "Rang moyen") +
+  theme_minimal()
+
+# PCA avec réintroduction de 'Player'
+pca_result <- prcomp(data_players_scaled %>% select(-cluster, -Player), center = TRUE, scale. = TRUE)
+
+# Extraire les scores des 2 premières composantes principales
+pca_data <- as_tibble(pca_result$x) %>%
+  select(PC1, PC2) %>%
+  mutate(cluster = data_players_scaled$cluster, Player = data_players_scaled$Player)
+
+# Visualisation avec étiquettes de joueurs en 2D
+ggplot(pca_data, aes(x = PC1, y = PC2, color = cluster, label = Player)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = Player), hjust = 0.5, vjust = -0.5, size = 3, show.legend = FALSE) +
+  labs(title = "PCA - Réduction à 2 dimensions",
+       x = "PC1", y = "PC2") +
+  theme_minimal()
+
+pca_data_3d <- as_tibble(pca_result$x) %>%
+  select(PC1, PC2, PC3) %>%
+  mutate(cluster = data_players_scaled$cluster, Player = data_players_scaled$Player)
+
+# Réduire le nombre de points par cluster de manière dynamique (50 points maximum par cluster, si possible)
+pca_data_3d_sampled <- pca_data_3d %>%
+  group_by(cluster) %>%
+  sample_n(min(n(), 10)) %>%
+  ungroup()
+
+# Visualisation 3D avec plotly
+p <- plot_ly(pca_data_3d_sampled, x = ~PC1, y = ~PC2, z = ~PC3, color = ~cluster, text = ~Player, type = "scatter3d", mode = "markers+text") %>%
+  layout(title = "PCA - Visualisation 3D des clusters",
+         scene = list(xaxis = list(title = 'PC1'),
+                      yaxis = list(title = 'PC2'),
+                      zaxis = list(title = 'PC3')))
+p
+
+```
