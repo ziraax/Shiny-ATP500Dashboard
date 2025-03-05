@@ -112,5 +112,28 @@ clustering_server <- function(id, player_stat) {
                             yaxis = list(title = 'PC2'),
                             zaxis = list(title = 'PC3')))
     })
+    
+    # Graphique de la méthode du coude
+    output$elbow_plot <- renderPlot({
+      wcss <- sapply(1:10, function(k) {
+        kmeans(player_stat_scaled() %>% select(-Player), centers = k, nstart = 25)$tot.withinss
+      })
+      plot(1:10, wcss, type = "b", pch = 19, frame = FALSE, 
+           xlab = "Nombre de clusters (k)", ylab = "WCSS",
+           main = "Méthode du coude pour déterminer k")
+    })
+    
+    # Graphique du score de silhouette
+    output$silhouette_plot <- renderPlot({
+      library(cluster)
+      silhouette_scores <- sapply(2:10, function(k) {
+        kmeans_result <- kmeans(player_stat_scaled() %>% select(-Player), centers = k, nstart = 25)
+        silhouette_score <- silhouette(kmeans_result$cluster, dist(player_stat_scaled() %>% select(-Player)))
+        mean(silhouette_score[, 3])
+      })
+      plot(2:10, silhouette_scores, type = "b", pch = 19, frame = FALSE, 
+           xlab = "Nombre de clusters (k)", ylab = "Score de silhouette moyen",
+           main = "Score de silhouette pour différents k")
+    })
   })
 }
