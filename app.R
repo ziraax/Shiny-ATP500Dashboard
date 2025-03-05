@@ -1,6 +1,11 @@
 library(shiny)
 library(bs4Dash)
 library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(caret)
+library(ggplot2)
+library(lubridate)
 
 # Importer les modules
 source("modules/ui/home_ui.R")
@@ -69,7 +74,7 @@ server <- function(input, output, session) {
   home_server("home_ui", dataset)
   dashboard_server("dashboard_ui", dataset)
   clustering_server("clustering_ui", player_stat)
-  battle_server("battle_ui")
+  battle_server("battle_ui", dataset, player_stat)
 }
 
 # Exécuter l'app
