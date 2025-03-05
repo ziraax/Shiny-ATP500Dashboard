@@ -59,6 +59,66 @@ ui <- bs4DashPage(
   
   # Onglets
   body = bs4DashBody(
+    # Charger le CSS personnalisé
+    tags$head(
+      tags$style(HTML("
+  .bracket {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important; /* 4 colonnes pour chaque round */
+    gap: 20px !important; /* Espacement entre les colonnes */
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+  
+  .round {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+  
+  .match {
+    border: 2px solid #ddd !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    margin: 20px 0 !important;
+    background-color: #f8f9fa !important;
+    text-align: center !important;
+    font-weight: bold !important;
+    width: 200px !important; /* Largeur uniforme pour tous les matchs */
+  }
+  
+  .match-winner {
+    background-color: #28a745 !important;
+    color: white !important;
+  }
+
+  .connector {
+    position: relative !important;
+    width: 50px !important;
+    height: 20px !important;
+  }
+  
+  .connector::before, .connector::after {
+    content: '' !important;
+    position: absolute !important;
+    width: 50% !important;
+    height: 2px !important;
+    background-color: #ddd !important;
+  }
+
+  .connector::before {
+    top: 0 !important;
+    left: 50% !important;
+  }
+  
+  .connector::after {
+    bottom: 0 !important;
+    left: 50% !important;
+  }
+  "))
+    ),
     bs4TabItems(
       home_ui("home_ui"),
       dashboard_ui("dashboard_ui"),

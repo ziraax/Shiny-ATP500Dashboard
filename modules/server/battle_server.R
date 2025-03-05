@@ -6,12 +6,12 @@ battle_server <- function(id, dataset, player_stat) {
     # MODEL TRAINING
     ################
     
-    # Step 1: Merge match data with player data
+    # Etape 1: Merge match data with player data
     merged_data <- dataset %>%
       left_join(player_stat, by = c("Player_1" = "Player")) %>%
       left_join(player_stat, by = c("Player_2" = "Player"), suffix = c("_1", "_2"))
     
-    # Step 2: Feature Engineering
+    # Etape 2: Feature Engineering
     merged_data <- merged_data %>%
       mutate(
         rank_diff = Rank_1 - Rank_2,
@@ -28,15 +28,15 @@ battle_server <- function(id, dataset, player_stat) {
         handedness = ifelse(Hand_1 == Hand_2, "Same", "Different")
       )
     
-    # Step 3: Handle missing values
+    # Etape 3: Missing values
     merged_data <- merged_data %>%
       drop_na()
     
-    # Step 4: Define the target variable
+    # Etape 4: Definir la target variable
     merged_data$target <- ifelse(merged_data$Winner == merged_data$Player_1, "Class1", "Class0")
     merged_data$target <- as.factor(merged_data$target)
     
-    # Step 5: Select relevant features for modeling
+    # Etape 5: Select relevant features for modeling
     model_data <- merged_data %>%
       select(
         target, rank_diff, wins_percent_diff, hard_wins_percent_diff,
@@ -44,13 +44,13 @@ battle_server <- function(id, dataset, player_stat) {
         surface, series, best_of, round, age_diff, handedness
       )
     
-    # Step 6: Split the data into training and testing sets
+    # Etape 6: Split the data into training and testing sets
     set.seed(123)
     train_index <- createDataPartition(model_data$target, p = 0.8, list = FALSE)
     train_data <- model_data[train_index, ]
     test_data <- model_data[-train_index, ]
     
-    # Step 7: Set up repeated cross-validation
+    # Etape 7: Repeated cross-validation
     ctrl <- trainControl(
       method = "repeatedcv",
       number = 10,
@@ -59,7 +59,7 @@ battle_server <- function(id, dataset, player_stat) {
       classProbs = TRUE
     )
     
-    # Step 8: Train a logistic regression model
+    # Etape 8: Logistic regression model
     logistic_model <- train(
       target ~ .,
       data = train_data,
@@ -69,19 +69,37 @@ battle_server <- function(id, dataset, player_stat) {
       metric = "Accuracy"
     )
     
-    # Step 9: Evaluate the model on the test set
+    # Etape 9: Test set
     test_predictions <- predict(logistic_model, test_data)
     conf_matrix <- confusionMatrix(test_predictions, test_data$target)
-    print(conf_matrix)
-    
+
     ################
     # END MODEL TRAINING
     ################
     
     
-    # Step 10: Visualize the cross-validation results
+    # Etape 12: Display confusion matrix
+    output$conf_matrix <- renderPrint({
+      # Extract the confusion matrix table
+      conf_matrix_table <- conf_matrix$table
+      
+      # Extract other metrics
+      accuracy <- conf_matrix$overall["Accuracy"]
+      kappa <- conf_matrix$overall["Kappa"]
+      sensitivity <- conf_matrix$byClass["Sensitivity"]
+      specificity <- conf_matrix$byClass["Specificity"]
+      
+      # Print the confusion matrix and metrics
+      cat("Accuracy:", accuracy, "\n")
+      cat("Kappa:", kappa, "\n")
+      cat("Sensitivity:", sensitivity, "\n")
+      cat("Specificity:", specificity, "\n")
+    })
+    
+    
+    # Etape 10: Cross-validation results
     output$cv_plot <- renderPlot({
-      cv_results <- logistic_model$results
+      cv_results <- logistic_model$resample
       ggplot(cv_results, aes(x = 1:nrow(cv_results), y = Accuracy)) +
         geom_point(size = 3, color = "blue") +
         geom_line(color = "red") +
@@ -93,7 +111,7 @@ battle_server <- function(id, dataset, player_stat) {
         theme_minimal()
     })
     
-    # Step 11: Display feature importance
+    # Etape 11: Feature importance
     output$importance_plot <- renderPlot({
       importance <- varImp(logistic_model)
       plot(importance, main = "Feature Importance")
@@ -230,6 +248,175 @@ battle_server <- function(id, dataset, player_stat) {
           )
         })
       }
+    })
+    
+    
+    ### FIN PREMIERE PARTIE DUEL DE JOUEURS
+    
+    # Mettre à jour la liste des joueurs disponibles
+    observe({
+      updateSelectizeInput(session, "tournament_players", choices = unique(dataset$Player_1))
+    })
+    
+    # Variables réactives pour stocker les résultats du tournoi
+    tournament_results <- reactiveValues(
+      quarterfinals = NULL,
+      semifinals = NULL,
+      final = NULL,
+      winner = NULL
+    )
+    
+    # Fonction pour afficher un match dans le bracket
+    display_match <- function(player1, player2, winner = NULL) {
+      # Obtenir les probabilités de victoire
+      result <- predict_winner_probability(player1, player2)
+      prob_player1 <- round(result$Probability_of_Winning[1] * 100, 2)
+      prob_player2 <- round(result$Probability_of_Winning[2] * 100, 2)
+      
+      # Afficher le match avec les probabilités
+      tags$div(
+        class = if (!is.null(winner)) "match match-winner" else "match",
+        p(strong(player1), " (", prob_player1, "%)"),
+        p(strong(player2), " (", prob_player2, "%)"),
+        if (!is.null(winner)) p(strong("Gagnant :"), winner)
+      )
+    }
+    
+    # Fonction pour simuler un match
+    simulate_match <- function(player1, player2) {
+      result <- predict_winner_probability(player1, player2)
+      if (result$Probability_of_Winning[1] > result$Probability_of_Winning[2]) {
+        return(player1)
+      } else {
+        return(player2)
+      }
+    }
+    
+    # Événement pour commencer le tournoi
+    observeEvent(input$start_tournament, {
+      req(input$tournament_players)  # Vérifier que 8 joueurs sont sélectionnés
+      
+      if (length(input$tournament_players) != 8) {
+        showNotification("Veuillez sélectionner exactement 8 joueurs pour commencer le tournoi.", type = "error")
+        return()
+      }
+      
+      # Réinitialiser les résultats du tournoi
+      tournament_results$quarterfinals <- NULL
+      tournament_results$semifinals <- NULL
+      tournament_results$final <- NULL
+      tournament_results$winner <- NULL
+      
+      # Afficher les quarts de finale
+      output$quarterfinals <- renderUI({
+        players <- input$tournament_players
+        tagList(
+          tags$div(class = "round",
+                   display_match(players[1], players[2]),
+                   tags$div(class = "connector"),
+                   display_match(players[3], players[4]),
+                   tags$div(class = "connector"),
+                   display_match(players[5], players[6]),
+                   tags$div(class = "connector"),
+                   display_match(players[7], players[8]))
+        )
+      })
+      
+      # Masquer les demi-finales, la finale et le vainqueur au début
+      output$semifinals <- renderUI({ NULL })
+      output$final <- renderUI({ NULL })
+      output$winner <- renderUI({ NULL })
+    })
+    
+    # Événement pour simuler les quarts de finale
+    observeEvent(input$simulate_quarterfinals, {
+      req(input$tournament_players)  # Vérifier que 8 joueurs sont sélectionnés
+      
+      # Simuler les quarts de finale
+      players <- input$tournament_players
+      tournament_results$quarterfinals <- c(
+        simulate_match(players[1], players[2]),
+        simulate_match(players[3], players[4]),
+        simulate_match(players[5], players[6]),
+        simulate_match(players[7], players[8])
+      )
+      
+      # Afficher les résultats des quarts de finale
+      output$quarterfinals <- renderUI({
+        tagList(
+          tags$div(class = "round",
+                   display_match(players[1], players[2], tournament_results$quarterfinals[1]),
+                   tags$div(class = "connector"),
+                   display_match(players[3], players[4], tournament_results$quarterfinals[2]),
+                   tags$div(class = "connector"),
+                   display_match(players[5], players[6], tournament_results$quarterfinals[3]),
+                   tags$div(class = "connector"),
+                   display_match(players[7], players[8], tournament_results$quarterfinals[4]))
+        )
+      })
+      
+      # Afficher les demi-finales
+      output$semifinals <- renderUI({
+        tagList(
+          tags$div(class = "round",
+                   display_match(tournament_results$quarterfinals[1], tournament_results$quarterfinals[2]),
+                   tags$div(class = "connector"),
+                   display_match(tournament_results$quarterfinals[3], tournament_results$quarterfinals[4]))
+        )
+      })
+    })
+    
+    # Événement pour simuler les demi-finales
+    observeEvent(input$simulate_semifinals, {
+      req(tournament_results$quarterfinals)  # Vérifier que les quarts de finale sont terminés
+      
+      # Simuler les demi-finales
+      tournament_results$semifinals <- c(
+        simulate_match(tournament_results$quarterfinals[1], tournament_results$quarterfinals[2]),
+        simulate_match(tournament_results$quarterfinals[3], tournament_results$quarterfinals[4])
+      )
+      
+      # Afficher les résultats des demi-finales
+      output$semifinals <- renderUI({
+        tagList(
+          tags$div(class = "round",
+                   display_match(tournament_results$quarterfinals[1], tournament_results$quarterfinals[2], tournament_results$semifinals[1]),
+                   tags$div(class = "connector"),
+                   display_match(tournament_results$quarterfinals[3], tournament_results$quarterfinals[4], tournament_results$semifinals[2]))
+        )
+      })
+      
+      # Afficher la finale
+      output$final <- renderUI({
+        tagList(
+          tags$div(class = "round",
+                   display_match(tournament_results$semifinals[1], tournament_results$semifinals[2]))
+        )
+      })
+    })
+    
+    # Événement pour simuler la finale
+    observeEvent(input$simulate_final, {
+      req(tournament_results$semifinals)  # Vérifier que les demi-finales sont terminées
+      
+      # Simuler la finale
+      tournament_results$winner <- simulate_match(tournament_results$semifinals[1], tournament_results$semifinals[2])
+      
+      # Afficher le résultat de la finale
+      output$final <- renderUI({
+        tagList(
+          tags$div(class = "round",
+                   display_match(tournament_results$semifinals[1], tournament_results$semifinals[2], tournament_results$winner))
+        )
+      })
+      
+      # Afficher le vainqueur
+      output$winner <- renderUI({
+        tagList(
+          h4("Vainqueur 🏆"),
+          p(strong(tournament_results$winner))
+        )
+      })
     })
   })
 }
