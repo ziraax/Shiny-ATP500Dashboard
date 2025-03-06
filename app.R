@@ -6,17 +6,21 @@ library(tidyr)
 library(caret)
 library(ggplot2)
 library(lubridate)
+library(DT)
 
 # Importer les modules
 source("modules/ui/home_ui.R")
 source("modules/ui/dashboard_ui.R")
 source("modules/ui/clustering_ui.R")
 source("modules/ui/battle_ui.R")
+source("modules/ui/a_propos_ui.R")
 
 source("modules/server/home_server.R")
 source("modules/server/dashboard_server.R")
 source("modules/server/clustering_server.R")
 source("modules/server/battle_server.R")
+source("modules/server/a_propos_server.R")
+
 
 dataset <- read_csv("data/atp_tennis.csv")
 player_stat <- read_csv("data/players_stats.csv")
@@ -53,7 +57,8 @@ ui <- bs4DashPage(
       bs4SidebarMenuItem("Home", tabName = "home", icon = icon("home")),
       bs4SidebarMenuItem("Dashboard", tabName = "dashboard", icon = icon("chart-line")),
       bs4SidebarMenuItem("Clustering", tabName = "clustering", icon = icon("project-diagram")),
-      bs4SidebarMenuItem("Battle", tabName = "battle", icon = icon("crosshairs"))
+      bs4SidebarMenuItem("Battle", tabName = "battle", icon = icon("crosshairs")),
+      bs4SidebarMenuItem("A propos", tabName="a_propos", icon= icon("info-circle"))
     )
   ),
   
@@ -123,7 +128,8 @@ ui <- bs4DashPage(
       home_ui("home_ui"),
       dashboard_ui("dashboard_ui"),
       clustering_ui("clustering_ui"),
-      battle_ui("battle_ui")
+      battle_ui("battle_ui"),
+      a_propos_ui("a_propos_ui")
     )
   )
 )
@@ -135,6 +141,8 @@ server <- function(input, output, session) {
   dashboard_server("dashboard_ui", dataset)
   clustering_server("clustering_ui", player_stat)
   battle_server("battle_ui", dataset, player_stat)
+  a_propos_server("a_propos_ui", dataset, player_stat)
+  
 }
 
 # Exécuter l'app

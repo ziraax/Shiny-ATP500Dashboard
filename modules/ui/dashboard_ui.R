@@ -48,7 +48,7 @@ dashboard_ui <- function(id) {
         ### CARD DES TENDANCES ET PERFORMANCES
         bs4Card(
           
-          title = "2️⃣ Tendances & Performances",
+          title = "Tendances & Performances",
           status = "info",
           solidHeader = TRUE,
           collapsible = TRUE,

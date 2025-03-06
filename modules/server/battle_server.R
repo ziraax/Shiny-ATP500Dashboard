@@ -201,8 +201,8 @@ battle_server <- function(id, dataset, player_stat) {
     
     # Update player choices in the selectizeInput
     observe({
-      updateSelectizeInput(session, "player_select_battle_1", choices = unique(dataset$Player_1))
-      updateSelectizeInput(session, "player_select_battle_2", choices = unique(dataset$Player_1))
+      updateSelectizeInput(session, "player_select_battle_1", choices = unique(dataset$Player_1), options = list(maxOptions = 2000))
+      updateSelectizeInput(session, "player_select_battle_2", choices = unique(dataset$Player_1), options = list(maxOptions = 2000))
     })
     
     # Event listener for the predict button
@@ -255,7 +255,7 @@ battle_server <- function(id, dataset, player_stat) {
     
     # Mettre à jour la liste des joueurs disponibles
     observe({
-      updateSelectizeInput(session, "tournament_players", choices = unique(dataset$Player_1))
+      updateSelectizeInput(session, "tournament_players", choices = unique(dataset$Player_1), options = list(maxOptions = 2000))
     })
     
     # Variables réactives pour stocker les résultats du tournoi

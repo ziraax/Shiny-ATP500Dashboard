@@ -22,9 +22,28 @@ clustering_server <- function(id, player_stat) {
     })
     
     # Mettre à jour les choix pour les axes X et Y
+    # On enleve certaines colonnes pour la visualisation car sinon ça pose problème
     observe({
-      updateSelectInput(session, "x_axis", choices = names(player_stat_clean() %>% select(-Player)))
-      updateSelectInput(session, "y_axis", choices = names(player_stat_clean() %>% select(-Player)))
+      updateSelectInput(session, "x_axis", choices = names(player_stat_clean() 
+                                                           %>% select(-Player, 
+                                                                      -Masters_nmatches, 
+                                                                      -Masters_nwins, 
+                                                                      -ATP250_nmatches,
+                                                                      -ATP500_nmatches,
+                                                                      -`Masters 1000_nmatches`,
+                                                                      -`Masters Cup_nmatches`,
+                                                                      -`Grand Slam_nmatches`,
+                                                                      -`Grand Slam_nwins`)))
+      updateSelectInput(session, "y_axis", choices = names(player_stat_clean() 
+                                                           %>% select(-Player, 
+                                                                      -Masters_nmatches, 
+                                                                      -Masters_nwins, 
+                                                                      -ATP250_nmatches,
+                                                                      -ATP500_nmatches,
+                                                                      -`Masters 1000_nmatches`,
+                                                                      -`Masters Cup_nmatches`,
+                                                                      -`Grand Slam_nmatches`,
+                                                                      -`Grand Slam_nwins`)))
     })
     
     # Réactive pour recalculer le clustering en fonction de k
