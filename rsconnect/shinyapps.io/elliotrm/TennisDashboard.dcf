@@ -5,9 +5,9 @@ account: elliotrm
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 14177801
-bundleId: 9902816
+bundleId: 9908448
 url: https://elliotrm.shinyapps.io/TennisDashboard/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: README.md|utils/1_explore.Rmd|utils/CLustering2.Rmd|utils/df_TS.Rmd|utils/Versus.Rmd|utils/Versus2.Rmd
+ignoredFiles: Rapport_dataviz_tennis.html|Rapport_dataviz_tennis.Rmd|README.md|utils/1_explore.Rmd|utils/CLustering2.Rmd|utils/df_TS.Rmd|utils/Versus.Rmd|utils/Versus2.Rmd

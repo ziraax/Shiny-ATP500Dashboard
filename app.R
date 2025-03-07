@@ -6,6 +6,8 @@ library(tidyr)
 library(caret)
 library(ggplot2)
 library(lubridate)
+library(plotly)
+library(leaflet)
 library(DT)
 
 # Importer les modules

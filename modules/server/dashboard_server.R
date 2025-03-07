@@ -158,6 +158,7 @@ dashboard_server <- function(id, dataset) {
     output$upsets_per_year <- renderPlotly({
       dataset %>% 
         mutate(Year = as.numeric(substr(Date, 1, 4))) %>%
+        filter(Year < 2025) %>% 
         filter(Rank_1 > Rank_2) %>% 
         filter(Winner == Player_2) %>% 
         group_by(Year) %>% 
@@ -193,36 +194,6 @@ dashboard_server <- function(id, dataset) {
     
     
     
-    # Statistiques d'un joueur sélectionné
-    output$player_stats <- renderPrint({
-      req(input$player_select)
-      
-      player_matches <- dataset %>%
-        filter(Player_1 == input$player_select | Player_2 == input$player_select)
-      
-      # Récupérer la dernière rencontre du joueur
-      last_match <- player_matches %>%
-        arrange(desc(Date)) %>%
-        slice(1)  # Prendre la dernière ligne
-      
-      # Récupérer le classement ATP selon s'il est Player_1 ou Player_2
-      if (nrow(last_match) > 0) {
-        if (last_match$Player_1 == input$player_select) {
-          ranking <- last_match$Rank_1
-        } else {
-          ranking <- last_match$Rank_2
-        }
-      } else {
-        ranking <- "Classement non disponible"
-      }
-      
-      # AFFICHAGE AVEC LES BOX renderbs4ValueBox
-      # Affichage avec cat() pour bien gérer les retours à la ligne
-      cat(
-        "Nombre de matchs joués par", input$player_select, ":", nrow(player_matches), "\n",
-        "Dernier classement ATP enregistré :", ranking
-      )
-    })
     
     # Nombre total de matchs
     output$total_matches_text <- renderText({
@@ -314,51 +285,6 @@ dashboard_server <- function(id, dataset) {
       )
     })
     
-    
-    # Statistiques des rencontres entre les deux joueurs sélectionnés
-    # n'est plus utile car decomposé au dessus 
-    #output$match_stats <- renderText({
-    #  req(input$player_select_1, input$player_select_2)
-    #  
-    #  player1 <- input$player_select_1
-    #  player2 <- input$player_select_2
-    #  
-    #  # Filtrer les matchs entre les deux joueurs
-    #  matches <- dataset %>%
-    #    filter((Player_1 == player1 & Player_2 == player2) | (Player_1 == player2 & Player_2 == player1))
-    #  
-    #  if (nrow(matches) == 0) {
-    #    return("Aucun match trouvé entre ces deux joueurs.")
-    #  }
-    #  
-    #  # Calculer les statistiques
-    #  total_matches <- nrow(matches)
-    #  player1_wins <- nrow(matches %>% filter(Winner == player1))
-    #  player2_wins <- nrow(matches %>% filter(Winner == player2))
-    #  
-    #  # Obtenir le classement ATP correct pour chaque joueur
-    #  last_match_player1 <- dataset %>%
-    #    filter(Player_1 == player1 | Player_2 == player1) %>%
-    #    arrange(desc(Date)) %>%
-    #    slice(1)
-    #  
-    #  last_match_player2 <- dataset %>%
-    #    filter(Player_1 == player2 | Player_2 == player2) %>%
-    #    arrange(desc(Date)) %>%
-    #    slice(1)
-    #  
-    #  ranking1 <- ifelse(last_match_player1$Player_1 == player1, last_match_player1$Rank_1, last_match_player1$Rank_2)
-    #  ranking2 <- ifelse(last_match_player2$Player_1 == player2, last_match_player2$Rank_1, last_match_player2$Rank_2)
-    #  
-    # Afficher les statistiques
-    #  paste(
-    #    "Nombre total de matchs :", total_matches, "\n",
-    #    player1, "a gagné", player1_wins, "matchs.\n",
-    #    player2, "a gagné", player2_wins, "matchs.\n",
-    #    "Dernier classement ATP de", player1, ":", ranking1, "\n",
-    #    "Dernier classement ATP de", player2, ":", ranking2
-    #  )
-    #})
     
     # Graphique : Évolution du classement des deux joueurs
     output$ranking_evolution <- renderPlotly({
@@ -611,9 +537,10 @@ dashboard_server <- function(id, dataset) {
             "🗓️ Dernière édition : ", Last_Edition
           ),
           radius = ~radius,
-          color = ~color,  
+          color = ~color,
+          opacity =1,
           fillColor = ~fillColor,  
-          fillOpacity = 0.7
+          fillOpacity = 1
         )
     })
     
