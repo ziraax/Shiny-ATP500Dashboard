@@ -15,15 +15,15 @@ Le tennis est un sport de passion, de stratégie et de performances, où chaque 
 
 ## **Une base de données riche**
 
-Notre projet s’appuie sur un jeu de données exceptionnel, rassemblant **64 411 matchs** entre joueurs du circuit ATP sur la période 2000-2025. Pour chaque rencontre, nous avons collecté des informations clés : le tournoi, la date, la surface (terre battue, gazon, dur…), les joueurs, le vainqueur, le score, le classement ATP et bien plus encore.
+Notre projet s’appuie sur un jeu de données vaste, rassemblant **64 411 matchs** entre joueurs du circuit ATP sur la période 2000-2025. Pour chaque rencontre, nous avons collecté des informations clés : le tournoi, la date, la surface (terre battue, gazon, dur…), les joueurs, le vainqueur, le score, le classement ATP et bien plus encore.
 
-Afin d'enrichir l'analyse, nous avons ajouté des détails sur les joueurs (nationalité, main dominante, date de naissance) et les tournois (coordonnées GPS, catégorie). Ces données nous ont permis de créer des indicateurs puissants :
+Afin d'enrichir l'analyse, nous avons ajouté des détails sur les joueurs (nationalité, main dominante, date de naissance) et les tournois (coordonnées GPS, catégorie). Ces données nous ont permis de créer des indicateurs pertinents :
 
--   **Pourcentage de victoires par surface**,
+-   **Pourcentage de victoires par surface**
 
--   **Nombre total de victoires**,
+-   **Nombre total de victoires**
 
--   **Classement et progression des joueurs**.
+-   **Classement et progression des joueurs**
 
 Après cette phase de collecte et de transformation des données, il était temps de passer à l’essentiel : la visualisation !
 
@@ -47,11 +47,11 @@ Notre application se divise ensuite en **trois grandes sections**, chacune offra
 
 Pour commencer, notre vue d’ensemble donne accès à des **statistiques générales**, telles que :
 
--   **Le nombre total de matchs joués**,
+-   **Le nombre total de matchs joués**
 
--   **Le nombre de vainqueurs uniques** (tous les joueurs n’ont pas eu la chance de soulever un trophée !),
+-   **Le nombre de vainqueurs uniques** (tous les joueurs n’ont pas eu la chance de soulever un trophée !)
 
--   **Le nombre de tournois organisés à travers le monde**.
+-   **Le nombre de tournois organisés à travers le monde**
 
 On observe rapidement une forte prédominance des matchs sur **surface dure et terre battue**, alors que le gazon et la moquette restent plus rares. Un classement des joueurs les plus victorieux est aussi disponible, mettant en avant les légendes du tennis comme **Roger Federer, Rafael Nadal, Novak Djokovic et Andy Murray**.
 
@@ -61,7 +61,7 @@ Nous proposons également une analyse des **tendances annuelles**, illustrant l'
 
 Que vous soyez fan d'un joueur en particulier ou curieux de comparer des parcours, cette section permet d'explorer **le profil d'un joueur en détail** :
 
--   Nationalité, main dominante, classement actuel,
+-   Nationalité, main dominante, classement actuel
 
 -   Nombre de matchs joués et **pourcentage de victoires par surface**,
 
@@ -73,11 +73,13 @@ Un simple menu déroulant vous permet de rechercher un joueur et d’analyser so
 
 Ici, on peut comparer directement **deux joueurs** pour analyser leur rivalité :
 
--   Nombre de victoires de chacun,
+-   Nombre de victoires de chacun, classement actuel
 
--   Evolution du classement ATP,
+-   Evolution du classement ATP
 
--   Distribution des matchs joués par surface.
+-   Distribution des matchs joués par surface
+
+-   Nombre de matchs gagnés par surface, par joueur
 
 Les spécialistes des surfaces y trouveront des résultats fascinants : **Rafael Nadal roi de la terre battue, Novak Djokovic maître du dur**...
 
@@ -103,7 +105,7 @@ Cela permet d’identifier des groupes homogènes : les **légendes du Big Four*
 
 Nous avons aussi réaliser une ACP qui est une méthode de réduction de dimension pour pouvoir proposer une visualisation complète sur 2 et 3 axes (composantes principales).
 
-Enfin, vous trouverez un onglet "Explications sur le clustering" qui traite nottament de la question du choix du paramètre k optimal dans le cas du clustering non supervisé.
+Enfin, vous trouverez un onglet "Explications sur le clustering" qui traite notamment de la question du choix du paramètre k optimal dans le cas du clustering non supervisé.
 
 ![](images/clipboard-1557256739.png)
 
