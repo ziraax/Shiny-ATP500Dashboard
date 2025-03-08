@@ -13,9 +13,9 @@ output:
 
 Le tennis est un sport de passion, de stratégie et de performances, où chaque match raconte une histoire unique. Pourtant, l’analyse approfondie des données du circuit ATP reste rare. C'est pourquoi nous avons décidé de créer une application interactive qui met en lumière les tendances, les performances et les dynamiques du tennis professionnel.
 
-## **Une base de données riche pour une analyse complète**
+## **Une base de données riche**
 
-Notre projet s’appuie sur un jeu de données exceptionnel, rassemblant **64 411 matchs** entre joueurs du circuit ATP. Pour chaque rencontre, nous avons collecté des informations clés : le tournoi, la date, la surface (terre battue, gazon, dur…), les joueurs, le vainqueur, le score, le classement ATP et bien plus encore.
+Notre projet s’appuie sur un jeu de données exceptionnel, rassemblant **64 411 matchs** entre joueurs du circuit ATP sur la période 2000-2025. Pour chaque rencontre, nous avons collecté des informations clés : le tournoi, la date, la surface (terre battue, gazon, dur…), les joueurs, le vainqueur, le score, le classement ATP et bien plus encore.
 
 Afin d'enrichir l'analyse, nous avons ajouté des détails sur les joueurs (nationalité, main dominante, date de naissance) et les tournois (coordonnées GPS, catégorie). Ces données nous ont permis de créer des indicateurs puissants :
 
@@ -36,6 +36,8 @@ Dès l’ouverture de l'application, une **page d'accueil immersive** donne un p
 -   **Le nombre de joueurs uniques**,
 
 -   **La période couverte par les données**.
+
+![](images/clipboard-2139526373.png)
 
 Notre application se divise ensuite en **trois grandes sections**, chacune offrant une approche unique de l'analyse du tennis :
 
@@ -79,35 +81,49 @@ Ici, on peut comparer directement **deux joueurs** pour analyser leur rivalité 
 
 Les spécialistes des surfaces y trouveront des résultats fascinants : **Rafael Nadal roi de la terre battue, Novak Djokovic maître du dur**...
 
+![](images/clipboard-1157725115.png)
+
 ### **4. Analyse des tournois : le tennis autour du globe**
 
 Cette section propose une **carte interactive** de tous les tournois ATP. Avec un sélecteur de date et de type de tournoi, on peut visualiser chaque compétition, classée par couleur en fonction de la surface. En cliquant sur un tournoi, un pop-up affiche ses informations clés, notamment **le vainqueur de l'année en question**.
 
+![](images/clipboard-3592400937.png)
+
 ## **B - Clustering : segmentation des joueurs**
 
-Dans cette partie, nous avons exploité le **clustering** pour regrouper les joueurs selon leurs performances.
+Dans cette partie, nous avons exploité le **clustering via la méthode kmeans** pour regrouper les joueurs selon leurs performances.
 
 L’utilisateur peut :
 
 -   Définir **le nombre de clusters**,
 
--   Sélectionner les **variables d'analyse (classement, points ATP, nombre de victoires, etc.)**.
+-   Sélectionner les **variables** pour représenter les joueurs et leurs clusters.
 
 Cela permet d’identifier des groupes homogènes : les **légendes du Big Four**, les joueurs de **top 10 à 50**, les outsiders... Une approche visuelle et puissante pour comprendre la hiérarchie du tennis mondial.
+
+Nous avons aussi réaliser une ACP qui est une méthode de réduction de dimension pour pouvoir proposer une visualisation complète sur 2 et 3 axes (composantes principales).
+
+Enfin, vous trouverez un onglet "Explications sur le clustering" qui traite nottament de la question du choix du paramètre k optimal dans le cas du clustering non supervisé.
+
+![](images/clipboard-1557256739.png)
+
+*L'affichage peut prendre jusqu'à 10 secondes.*
 
 ## **C - Battle : la science de la prédiction**
 
 Cette section vous plonge dans l’univers de la **prédiction des matchs**.
 
-En sélectionnant **deux joueurs**, l'application estime **la probabilité de victoire de chacun** grâce à un modèle de régression logistique. Un graphique interactif met en avant les variables qui influencent le plus l’issue du match :
+En sélectionnant **deux joueurs**, l'application estime **la probabilité de victoire de chacun** grâce à un modèle de régression logistique. L'outil propose de choisir le **contexte** du match c'est à dire la surface sur laquelle il est joué, la série, le nombre de sets, et l'étape du tournoi.
 
--   Classement ATP,
+![](images/clipboard-2660383406.png)
 
--   Historique des confrontations,
-
--   Préférence de surface.
+*Vous trouverez un onglet "Explications sur notre modèle" pour en savoir plus sur la modélisation.*
 
 L'outil idéal pour anticiper **le résultat d'un duel de titans !**
+
+Enfin, vous trouverez un onglet "Simulation de tournoi" qui permet de simuler un bracket de tournoi (quart de final).
+
+![](images/clipboard-146137.png)
 
 ## **Conclusion : une nouvelle manière d'explorer le tennis**
 
