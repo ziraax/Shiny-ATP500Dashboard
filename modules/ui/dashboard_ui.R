@@ -69,11 +69,26 @@ dashboard_ui <- function(id) {
         
       ),
       
+      ##
+      # TABPANEL RESERVÉ A L'ANALYSE JOUEUR
+      ## 
+      
       tabPanel(
         title = "Analyse joueur",
         h4("Analyse détaillée d'un joueur."),
         selectInput(ns("player_select"), "Choisissez un joueur :", choices = NULL),
-        textOutput(ns("player_stats"))
+        textOutput(ns("player_stats")),
+        
+        uiOutput(ns("infos_joueurs")),
+        fluidRow(
+          column(6, plotlyOutput(ns("graphique_terrains"))),
+          column(6, plotlyOutput(ns("evolution_rank")))
+        ),
+        
+        fluidRow(
+          column(7, plotlyOutput(ns("championnats_graphique"))),
+          column(5, plotlyOutput(ns("championnats_graphique2")))
+        )
       ),
       
       ##

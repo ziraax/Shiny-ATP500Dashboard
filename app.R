@@ -7,6 +7,8 @@ library(caret)
 library(ggplot2)
 library(lubridate)
 library(plotly)
+library(lattice)
+library(countrycode)
 library(leaflet)
 library(DT)
 

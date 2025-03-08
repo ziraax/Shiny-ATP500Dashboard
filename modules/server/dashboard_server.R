@@ -177,6 +177,207 @@ dashboard_server <- function(id, dataset) {
     ########################################
     
     #########################
+    # PARTIE ANALYSE JOUEUR #
+    #########################
+    observe({
+      player_list <- sort(unique(c(dataset$Player_1, dataset$Player_2)))
+      updateSelectizeInput(session, "player_select", choices = player_list, server = TRUE, options = list(maxOptions = 2000))
+    })
+    
+    # Affichage avec HTML des informations sur le joueur
+    output$infos_joueurs <- renderUI({
+      req(input$player_select) 
+      
+      players <- read_csv("./data/players_stats.csv")
+      
+      player_info <- players %>%
+        filter(Player == input$player_select) %>%
+        select(Player, flag_url, Date_of_birth, Country, AVG_rank, Wins_percent, Total_wins, Hand)
+      
+      flag <- player_info$flag_url
+      country <- countrycode(player_info$Country, origin = "iso3c", destination = "country.name")
+      player_name <- player_info$Player
+      age <- as.integer(interval(player_info$Date_of_birth, Sys.Date()) / years(1))
+      avg_rank <- round(player_info$AVG_rank)
+      win_percent <- round(player_info$Wins_percent, 1)
+      total_wins <- player_info$Total_wins
+      hand <- ifelse(!is.na(player_info$Hand), 
+                     ifelse(player_info$Hand == "R", "D", "G"), 
+                     "Main non spécifiée")
+      
+      HTML(
+        paste0(
+          "<div style='display: flex; align-items: center; gap: 15px; padding: 10px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);'>",
+          "  <img src='", flag, "' width='400' height='270' style='border-radius: 5px; box-shadow: 1px 1px 5px rgba(0,0,0,0.2);'>",
+          "  <table style='border-collapse: collapse; font-size: 18px; line-height: 1.6; color: #333;'>",
+          "    <tr>",
+          "      <td style='padding-right: 20px;'><b>Nom :</b></td><td style='padding-right: 30px;'>", player_name, "</td>",
+          "      <td style='padding-right: 20px;'><b>Âge :</b></td><td>", age, " ans</td>",
+          "    </tr>",
+          "    <tr>",
+          "      <td style='padding-right: 20px;'><b>Nationalité :</b></td><td style='padding-right: 30px;'>", country, "</td>",
+          "      <td style='padding-right: 20px;'><b>Main dominante :</b></td><td>", hand, "</td>",
+          "    </tr>",
+          "    <tr>",
+          "      <td style='padding-right: 20px;'><b>🌍 Rang moyen :</b></td><td>", avg_rank, "</td>",
+          "    </tr>",
+          "    <tr>",
+          "      <td style='padding-right: 20px;'><b>🏆 Victoires totales :</b></td><td>", total_wins, "</td>",
+          "    </tr>",
+          "    <tr>",
+          "      <td style='padding-right: 20px;'><b>📊 Pourcentage de victoires :</b></td><td>", win_percent, "%</td>",
+          "    </tr>",
+          "  </table>",
+          "</div>"
+        )
+      )
+      
+    })
+    
+    
+    
+    # premier graphique : pourcentage de victoire par terrain
+    output$graphique_terrains <- renderPlotly({
+      req(input$player_select)
+      
+      player <- input$player_select
+      players <- read_csv("./data/players_stats.csv")
+      
+      player_data <- players %>%
+        filter(Player == player) %>%
+        select(Player, Clay_wins_percent, Grass_wins_percent, Hard_wins_percent, Carpet_wins_percent) %>%
+        pivot_longer(cols = -Player, names_to = "Surface", values_to = "Win_Percent")
+      
+      player_data$Surface <- factor(player_data$Surface, 
+                                    levels = c("Clay_wins_percent", "Grass_wins_percent", "Hard_wins_percent", "Carpet_wins_percent"),
+                                    labels = c("Clay", "Grass", "Hard", "Carpet"))
+      
+      player_data$Win_Percent <- tidyr::replace_na(player_data$Win_Percent, 0)
+      
+      # Création d'un barplot interactif avec plotly
+      p <- plot_ly(data = player_data, 
+                   x = ~Surface, 
+                   y = ~Win_Percent, 
+                   type = 'bar', 
+                   color = ~Surface, 
+                   colors = c("#ff7f0e", "#2ca02c", "#1f77b4", "#d62728"),
+                   hovertext = ~paste(Surface, ": ", round(Win_Percent), "%"),
+                   hoverinfo = 'text') %>%
+        layout(title = paste("Pourcentage de victoire par surface -", player),
+               xaxis = list(title = "Surface"),
+               yaxis = list(title = "Pourcentage de victoire (%)"))
+      
+      p
+    })
+    
+    output$evolution_rank <- renderPlotly({
+      req(input$player_select)
+      
+      # Filtrer les données pour chaque joueur
+      player_data <- dataset %>%
+        filter(Player_1 == input$player_select | Player_2 == input$player_select) %>%
+        mutate(Rank = ifelse(Player_1 == input$player_select, Rank_1, Rank_2)) %>%
+        select(Date, Rank)
+      
+      # Tracer le graphique
+      plot_ly() %>%
+        add_trace(data = player_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = input$player_select) %>%
+        layout(
+          title = "Évolution du classement ATP",
+          xaxis = list(title = "Date"),
+          yaxis = list(title = " ")
+        )
+    })
+    
+    output$championnats_graphique <- renderPlotly({
+      
+      players <- read_csv("./data/players_stats.csv")
+      
+      championnats <- players %>%
+        filter(Player == input$player_select) %>%
+        select(Player, International_nmatches, `Grand Slam_nmatches`, `International Gold_nmatches`, 
+               Masters_nmatches, ATP250_nmatches, ATP500_nmatches, `Masters 1000_nmatches`, 
+               `Masters Cup_nmatches`) %>%
+        pivot_longer(cols = -Player, names_to = "Championnat", values_to = "nmatches")
+      
+      championnats <- championnats %>%
+        mutate(Percent = ifelse(!is.finite(nmatches) | is.na(nmatches), 0, nmatches / sum(nmatches) * 100))
+      
+      championnats$Championnat <- gsub("_nmatches", "", championnats$Championnat)
+      
+      champ_colors <- c("International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32", "Masters" = "#FFD700",          
+                        "ATP250" = "#00CED1", "ATP500" = "#8A2BE2", "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A")
+      
+      championnats$Championnat <- factor(championnats$Championnat, 
+                                         levels = names(champ_colors))
+      
+      championnats$color <- champ_colors[championnats$Championnat]
+      
+      # Doughnut chart
+      plot_ly(championnats, 
+              labels = ~Championnat, 
+              values = ~Percent, 
+              type = 'pie',
+              text = ~paste(nmatches),
+              hoverinfo = 'label+text',
+              textinfo = 'percent',
+              hovertemplate = ~paste(Championnat, "<br>Nombre de matchs : ", nmatches),
+              showlegend = TRUE,
+              marker = list(colors = championnats$color)) %>% 
+        layout(title = list(text = "Répartition des championnats joués",
+                            xanchor = 'right'),
+               legend = list(orientation = 'v', x = 1.5, xanchor = 'right', y = 0.5, yanchor = 'middle'))
+    })
+    
+    output$championnats_graphique2 <- renderPlotly({
+      
+      players <- read_csv("./data/players_stats.csv")
+      
+      championnats <- players %>%
+        filter(Player == input$player_select) %>%
+        select(Player, International_nmatches, `Grand Slam_nmatches`, `International Gold_nmatches`, 
+               Masters_nmatches, ATP250_nmatches, ATP500_nmatches, `Masters 1000_nmatches`, 
+               `Masters Cup_nmatches`, International_nwins, `Grand Slam_nwins`, `International Gold_nwins`, 
+               Masters_nwins, ATP250_nwins, ATP500_nwins, `Masters 1000_nwins`, 
+               `Masters Cup_nwins`) %>%
+        pivot_longer(
+          cols = c(International_nmatches:`Masters Cup_nmatches`, 
+                   International_nwins:`Masters Cup_nwins`),
+          names_to = c("Championnat", ".value"),
+          names_pattern = "(.*)_(nmatches|nwins)"
+        )
+      
+      championnats <- championnats %>%
+        mutate(Percent = ifelse(!is.finite(nmatches) | is.na(nmatches) & !is.finite(nwins) | is.na(nwins), 0, nwins/sum(nwins) * 100))
+      
+      
+      champ_colors <- c("International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32", "Masters" = "#FFD700",          
+                        "ATP250" = "#00CED1", "ATP500" = "#8A2BE2", "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A")
+      
+      championnats$Championnat <- factor(championnats$Championnat, 
+                                         levels = names(champ_colors))
+      
+      championnats$color <- champ_colors[championnats$Championnat]
+      
+      plot_ly(championnats, 
+              labels = ~Championnat, 
+              values = ~Percent,
+              type = 'pie',
+              text = ~paste(nwins),
+              hoverinfo = 'label+text',
+              textinfo = 'percent',
+              hovertemplate = ~paste(Championnat, "<br>Nombre de victoires : ", nwins),
+              showlegend = FALSE,
+              marker = list(colors = championnats$color)) %>% 
+        layout(title = "Répartition des victoires par championnat",
+               showlegend = FALSE)
+    })
+    
+    ########################################
+    # FIN PARTIE TENDANCES ET PERFORMANCES #
+    ########################################
+    
+    #########################
     # PARTIE ANALYSE VERSUS #
     #########################
     
