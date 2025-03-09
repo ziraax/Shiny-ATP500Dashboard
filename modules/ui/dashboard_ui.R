@@ -80,14 +80,16 @@ dashboard_ui <- function(id) {
         textOutput(ns("player_stats")),
         
         uiOutput(ns("infos_joueurs")),
+        br(),
+        
         fluidRow(
           column(6, plotlyOutput(ns("graphique_terrains"))),
           column(6, plotlyOutput(ns("evolution_rank")))
         ),
         
         fluidRow(
-          column(7, plotlyOutput(ns("championnats_graphique"))),
-          column(5, plotlyOutput(ns("championnats_graphique2")))
+          column(6, plotlyOutput(ns("wins_pie_chart"))),
+          column(6, plotlyOutput(ns("repartition_champ_played")))
         )
       ),
       

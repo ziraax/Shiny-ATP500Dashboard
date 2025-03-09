@@ -3,7 +3,7 @@ library(leaflet)
 
 
 
-dashboard_server <- function(id, dataset) {
+dashboard_server <- function(id, dataset, player_stat) {
   moduleServer(id, function(input, output, session) {
     
     #########################
@@ -188,21 +188,24 @@ dashboard_server <- function(id, dataset) {
     output$infos_joueurs <- renderUI({
       req(input$player_select) 
       
-      players <- read_csv("./data/players_stats.csv")
+      players <- player_stat
       
       player_info <- players %>%
         filter(Player == input$player_select) %>%
         select(Player, flag_url, Date_of_birth, Country, AVG_rank, Wins_percent, Total_wins, Hand)
       
       flag <- player_info$flag_url
+      
+      # CETTE LIGNE FAIT SUREMENT DE LA MERDE
       country <- countrycode(player_info$Country, origin = "iso3c", destination = "country.name")
+      
       player_name <- player_info$Player
       age <- as.integer(interval(player_info$Date_of_birth, Sys.Date()) / years(1))
       avg_rank <- round(player_info$AVG_rank)
       win_percent <- round(player_info$Wins_percent, 1)
       total_wins <- player_info$Total_wins
       hand <- ifelse(!is.na(player_info$Hand), 
-                     ifelse(player_info$Hand == "R", "D", "G"), 
+                     ifelse(player_info$Hand == "R", "R", "L"), 
                      "Main non spécifiée")
       
       HTML(
@@ -211,12 +214,12 @@ dashboard_server <- function(id, dataset) {
           "  <img src='", flag, "' width='400' height='270' style='border-radius: 5px; box-shadow: 1px 1px 5px rgba(0,0,0,0.2);'>",
           "  <table style='border-collapse: collapse; font-size: 18px; line-height: 1.6; color: #333;'>",
           "    <tr>",
-          "      <td style='padding-right: 20px;'><b>Nom :</b></td><td style='padding-right: 30px;'>", player_name, "</td>",
-          "      <td style='padding-right: 20px;'><b>Âge :</b></td><td>", age, " ans</td>",
+          "      <td style='padding-right: 20px;'><b>🏷 Nom :</b></td><td style='padding-right: 30px;'>", player_name, "</td>",
+          "      <td style='padding-right: 20px;'><b>🎂 Âge :</b></td><td>", age, " ans</td>",
           "    </tr>",
           "    <tr>",
-          "      <td style='padding-right: 20px;'><b>Nationalité :</b></td><td style='padding-right: 30px;'>", country, "</td>",
-          "      <td style='padding-right: 20px;'><b>Main dominante :</b></td><td>", hand, "</td>",
+          "      <td style='padding-right: 20px;'><b>🏳️ Nationalité :</b></td><td style='padding-right: 30px;'>", country, "</td>",
+          "      <td style='padding-right: 20px;'><b>✋ Main dominante :</b></td><td>", hand, "</td>",
           "    </tr>",
           "    <tr>",
           "      <td style='padding-right: 20px;'><b>🌍 Rang moyen :</b></td><td>", avg_rank, "</td>",
@@ -240,35 +243,56 @@ dashboard_server <- function(id, dataset) {
     output$graphique_terrains <- renderPlotly({
       req(input$player_select)
       
+      # Charger les données
       player <- input$player_select
-      players <- read_csv("./data/players_stats.csv")
+      players <- player_stat
       
+      # Filtrer et reformater les données
       player_data <- players %>%
         filter(Player == player) %>%
         select(Player, Clay_wins_percent, Grass_wins_percent, Hard_wins_percent, Carpet_wins_percent) %>%
         pivot_longer(cols = -Player, names_to = "Surface", values_to = "Win_Percent")
       
+      # Remplacer les valeurs NA par 0
+      player_data$Win_Percent <- tidyr::replace_na(player_data$Win_Percent, 0)
+      
+      # Vérifier si le joueur a **0% partout**
+      if (all(player_data$Win_Percent == 0)) {
+        return(plotly_empty() %>%
+                 layout(
+                   title = paste("Aucune victoire enregistrée pour", player),
+                   xaxis = list(visible = FALSE),
+                   yaxis = list(visible = FALSE),
+                   annotations = list(
+                     list(
+                       text = paste(player, "n'a jamais gagné sur aucune surface."),
+                       xref = "paper", yref = "paper",
+                       x = 0.5, y = 0.5, showarrow = FALSE,
+                       font = list(size = 16)
+                     )
+                   )
+                 ))
+      }
+      
+      # Nettoyage des noms de surfaces
       player_data$Surface <- factor(player_data$Surface, 
                                     levels = c("Clay_wins_percent", "Grass_wins_percent", "Hard_wins_percent", "Carpet_wins_percent"),
                                     labels = c("Clay", "Grass", "Hard", "Carpet"))
       
-      player_data$Win_Percent <- tidyr::replace_na(player_data$Win_Percent, 0)
-      
-      # Création d'un barplot interactif avec plotly
-      p <- plot_ly(data = player_data, 
-                   x = ~Surface, 
-                   y = ~Win_Percent, 
-                   type = 'bar', 
-                   color = ~Surface, 
-                   colors = c("#ff7f0e", "#2ca02c", "#1f77b4", "#d62728"),
-                   hovertext = ~paste(Surface, ": ", round(Win_Percent), "%"),
-                   hoverinfo = 'text') %>%
+      # Création du barplot interactif
+      plot_ly(data = player_data, 
+              x = ~Surface, 
+              y = ~Win_Percent, 
+              type = 'bar', 
+              color = ~Surface, 
+              colors = c("#ff7f0e", "#2ca02c", "#1f77b4", "#d62728"),
+              hovertext = ~paste(Surface, ": ", round(Win_Percent), "%"),
+              hoverinfo = 'text') %>%
         layout(title = paste("Pourcentage de victoire par surface -", player),
                xaxis = list(title = "Surface"),
-               yaxis = list(title = "Pourcentage de victoire (%)"))
-      
-      p
+               yaxis = list(title = "Pourcentage de victoire (%)", range = c(0, 100)))
     })
+    
     
     output$evolution_rank <- renderPlotly({
       req(input$player_select)
@@ -281,7 +305,13 @@ dashboard_server <- function(id, dataset) {
       
       # Tracer le graphique
       plot_ly() %>%
-        add_trace(data = player_data, x = ~Date, y = ~Rank, type = "scatter", mode = "lines+markers", name = input$player_select) %>%
+        add_trace(data = player_data, 
+                  x = ~Date, 
+                  y = ~Rank, 
+                  type = "scatter", 
+                  mode = "lines", 
+                  name = input$player_select, 
+                  line = list(color= "darkblue")) %>%
         layout(
           title = "Évolution du classement ATP",
           xaxis = list(title = "Date"),
@@ -289,93 +319,151 @@ dashboard_server <- function(id, dataset) {
         )
     })
     
-    output$championnats_graphique <- renderPlotly({
+    output$wins_pie_chart <- renderPlotly({
+      req(input$player_select)
       
-      players <- read_csv("./data/players_stats.csv")
+      # Charger les données
+      players <- player_stat
       
+      # Sélection dynamique des colonnes liées aux victoires
+      win_columns <- names(players)[grepl("_nwins$", names(players))]
+      
+      # Transformer les données en format long
       championnats <- players %>%
         filter(Player == input$player_select) %>%
-        select(Player, International_nmatches, `Grand Slam_nmatches`, `International Gold_nmatches`, 
-               Masters_nmatches, ATP250_nmatches, ATP500_nmatches, `Masters 1000_nmatches`, 
-               `Masters Cup_nmatches`) %>%
-        pivot_longer(cols = -Player, names_to = "Championnat", values_to = "nmatches")
+        select(Player, all_of(win_columns)) %>%
+        pivot_longer(cols = -Player, names_to = "Championnat", values_to = "Wins") %>%
+        filter(Wins > 0)  # Supprimer les tournois où le joueur n'a aucune victoire
       
+      # Vérifier si le joueur a **aucune victoire**
+      if (nrow(championnats) == 0) {
+        return(plotly_empty() %>%
+                 layout(
+                   title = paste("Aucune victoire enregistrée pour", input$player_select),
+                   xaxis = list(visible = FALSE),
+                   yaxis = list(visible = FALSE),
+                   annotations = list(
+                     list(
+                       text = paste(input$player_select, "n'a remporté aucun match en tournoi."),
+                       xref = "paper", yref = "paper",
+                       x = 0.5, y = 0.5, showarrow = FALSE,
+                       font = list(size = 16)
+                     )
+                   )
+                 ))
+      }
+      
+      # Nettoyer les noms des championnats
+      championnats$Championnat <- championnats$Championnat %>%
+        str_replace_all("_nwins", "") %>%
+        str_replace_all("_", " ") %>%
+        str_to_title()  # Mettre en majuscule chaque mot
+      
+      # Calcul des pourcentages
       championnats <- championnats %>%
-        mutate(Percent = ifelse(!is.finite(nmatches) | is.na(nmatches), 0, nmatches / sum(nmatches) * 100))
+        mutate(Percent = Wins / sum(Wins) * 100)
       
-      championnats$Championnat <- gsub("_nmatches", "", championnats$Championnat)
+      # Définition des couleurs pour chaque type de tournoi
+      champ_colors <- c(
+        "International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32",
+        "Masters" = "#FFD700", "Atp250" = "#00CED1", "Atp500" = "#8A2BE2",
+        "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A"
+      )
       
-      champ_colors <- c("International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32", "Masters" = "#FFD700",          
-                        "ATP250" = "#00CED1", "ATP500" = "#8A2BE2", "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A")
-      
-      championnats$Championnat <- factor(championnats$Championnat, 
-                                         levels = names(champ_colors))
-      
-      championnats$color <- champ_colors[championnats$Championnat]
-      
-      # Doughnut chart
-      plot_ly(championnats, 
-              labels = ~Championnat, 
-              values = ~Percent, 
-              type = 'pie',
-              text = ~paste(nmatches),
-              hoverinfo = 'label+text',
-              textinfo = 'percent',
-              hovertemplate = ~paste(Championnat, "<br>Nombre de matchs : ", nmatches),
-              showlegend = TRUE,
-              marker = list(colors = championnats$color)) %>% 
-        layout(title = list(text = "Répartition des championnats joués",
-                            xanchor = 'right'),
-               legend = list(orientation = 'v', x = 1.5, xanchor = 'right', y = 0.5, yanchor = 'middle'))
-    })
-    
-    output$championnats_graphique2 <- renderPlotly({
-      
-      players <- read_csv("./data/players_stats.csv")
-      
-      championnats <- players %>%
-        filter(Player == input$player_select) %>%
-        select(Player, International_nmatches, `Grand Slam_nmatches`, `International Gold_nmatches`, 
-               Masters_nmatches, ATP250_nmatches, ATP500_nmatches, `Masters 1000_nmatches`, 
-               `Masters Cup_nmatches`, International_nwins, `Grand Slam_nwins`, `International Gold_nwins`, 
-               Masters_nwins, ATP250_nwins, ATP500_nwins, `Masters 1000_nwins`, 
-               `Masters Cup_nwins`) %>%
-        pivot_longer(
-          cols = c(International_nmatches:`Masters Cup_nmatches`, 
-                   International_nwins:`Masters Cup_nwins`),
-          names_to = c("Championnat", ".value"),
-          names_pattern = "(.*)_(nmatches|nwins)"
+      # Création du doughnut chart avec plotly
+      plot_ly(
+        data = championnats, 
+        labels = ~Championnat, 
+        values = ~Percent,
+        type = 'pie',
+        hole = 0.4,  # Ajoute un trou central pour un effet "doughnut"
+        textinfo = 'percent',
+        hovertemplate = ~paste(Championnat, "<br>Nombre de victoires :", Wins),
+        marker = list(colors = champ_colors[championnats$Championnat]),
+        showlegend = TRUE,  # Afficher la légende pour la partager avec l'autre graphique
+        name = " " # Pour ne pas afficher de trace
+      ) %>% 
+        layout(
+          title = paste("Répartition des victoires de", input$player_select),
+          legend = list(orientation = 'v', x = 1, y = 0.5, xanchor = 'left', yanchor = 'middle')
         )
-      
-      championnats <- championnats %>%
-        mutate(Percent = ifelse(!is.finite(nmatches) | is.na(nmatches) & !is.finite(nwins) | is.na(nwins), 0, nwins/sum(nwins) * 100))
-      
-      
-      champ_colors <- c("International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32", "Masters" = "#FFD700",          
-                        "ATP250" = "#00CED1", "ATP500" = "#8A2BE2", "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A")
-      
-      championnats$Championnat <- factor(championnats$Championnat, 
-                                         levels = names(champ_colors))
-      
-      championnats$color <- champ_colors[championnats$Championnat]
-      
-      plot_ly(championnats, 
-              labels = ~Championnat, 
-              values = ~Percent,
-              type = 'pie',
-              text = ~paste(nwins),
-              hoverinfo = 'label+text',
-              textinfo = 'percent',
-              hovertemplate = ~paste(Championnat, "<br>Nombre de victoires : ", nwins),
-              showlegend = FALSE,
-              marker = list(colors = championnats$color)) %>% 
-        layout(title = "Répartition des victoires par championnat",
-               showlegend = FALSE)
     })
     
-    ########################################
-    # FIN PARTIE TENDANCES ET PERFORMANCES #
-    ########################################
+    
+    output$repartition_champ_played <- renderPlotly({
+      req(input$player_select)  # Vérifie que le joueur est bien sélectionné
+      
+      # Charger les données
+      players <- player_stat
+      
+      # Sélection automatique des colonnes "nmatches"
+      match_columns <- names(players)[grepl("_nmatches$", names(players))]
+      
+      # Transformer en format long
+      championnats <- players %>%
+        filter(Player == input$player_select) %>%
+        select(Player, all_of(match_columns)) %>%
+        pivot_longer(cols = -Player, names_to = "Championnat", values_to = "Matches") %>%
+        filter(Matches > 0)  # Supprime les catégories avec 0 match joué
+      
+      # Nettoyer les noms des championnats
+      championnats <- championnats %>%
+        mutate(Championnat = str_replace_all(Championnat, "_nmatches", "") %>%
+                 str_replace_all("_", " ") %>%
+                 str_to_title())  # Met en majuscule chaque mot
+      
+      # Vérifier si le joueur a bien des matchs enregistrés
+      if (nrow(championnats) == 0) {
+        return(plotly_empty() %>%
+                 layout(
+                   title = paste("Aucun match enregistré pour", input$player_select),
+                   xaxis = list(visible = FALSE),
+                   yaxis = list(visible = FALSE),
+                   annotations = list(
+                     list(
+                       text = paste(input$player_select, "n'a joué aucun tournoi."),
+                       xref = "paper", yref = "paper",
+                       x = 0.5, y = 0.5, showarrow = FALSE,
+                       font = list(size = 16)
+                     )
+                   )
+                 ))
+      }
+      
+      # Calcul des pourcentages
+      championnats <- championnats %>%
+        mutate(Percent = Matches / sum(Matches) * 100)
+      
+      # Définition des couleurs des championnats
+      champ_colors <- c(
+        "International" = "#FF6347", "Grand Slam" = "#4682B4", "International Gold" = "#32CD32",
+        "Masters" = "#FFD700", "Atp250" = "#00CED1", "Atp500" = "#8A2BE2",
+        "Masters 1000" = "#D2691E", "Masters Cup" = "#A52A2A"
+      )
+      
+      # Création du doughnut chart
+      plot_ly(
+        data = championnats, 
+        labels = ~Championnat, 
+        values = ~Percent, 
+        type = 'pie',
+        hole = 0.4,  # Ajoute un trou central pour un effet "doughnut"
+        textinfo = 'percent',
+        hovertemplate = ~paste(Championnat, "<br>Nombre de matchs :", Matches),
+        marker = list(colors = champ_colors[championnats$Championnat]),
+        showlegend = TRUE,  # Afficher la légende commune
+        name = " " # Pour ne pas afficher de trace
+      ) %>% 
+        layout(
+          title = "Répartition des championnats joués",
+          legend = list(orientation = 'v', x = 1, y = 0.5, xanchor = 'left', yanchor = 'middle')
+        )
+    })
+    
+    
+    
+    
+  
     
     #########################
     # PARTIE ANALYSE VERSUS #

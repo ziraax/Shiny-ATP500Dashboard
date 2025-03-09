@@ -33,6 +33,7 @@ player_stat <- read_csv("data/players_stats.csv")
 ui <- bs4DashPage(
   title = "ATP Tennis Dashboard 🎾",
   fullscreen = TRUE,
+  help = FALSE,
   
   # Header
   header = bs4DashNavbar(
@@ -41,6 +42,7 @@ ui <- bs4DashPage(
     border = TRUE,
     sidebarIcon = icon("bars"),
     controlbarIcon = icon("th"),
+    
     
     title = bs4DashBrand(
       title = "🎾 ATP Tennis Dashboard",
@@ -68,6 +70,7 @@ ui <- bs4DashPage(
   
   # Onglets
   body = bs4DashBody(
+    help = FALSE,
     # Charger le CSS personnalisé
     tags$head(
       tags$style(HTML("
@@ -126,6 +129,22 @@ ui <- bs4DashPage(
           bottom: 0 !important;
           left: 50% !important;
         }
+        
+        /* Masquer uniquement le help switch (en ciblant précisément son ID) */
+        #help_switch, 
+        #help_switch + .custom-control-label, 
+        #help_switch ~ .custom-control {
+          display: none !important;
+        }
+
+
+
+        
+        
+        
+        
+
+        
       "))
     ),
     bs4TabItems(
@@ -142,7 +161,7 @@ ui <- bs4DashPage(
 server <- function(input, output, session) {
   # Appels des modules (avec moduleServer)
   home_server("home_ui", dataset)
-  dashboard_server("dashboard_ui", dataset)
+  dashboard_server("dashboard_ui", dataset, player_stat)
   clustering_server("clustering_ui", player_stat)
   battle_server("battle_ui", dataset, player_stat)
   a_propos_server("a_propos_ui", dataset, player_stat)
